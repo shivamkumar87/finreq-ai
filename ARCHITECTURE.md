@@ -17,7 +17,7 @@ Every request passes through `AgentOrchestrator.runPipeline()` in `src/agents/or
 | Path | Responsibility |
 |---|---|
 | `src/App.jsx` | Interactive React UI: Stakeholder role selector, file upload, optional Gemini API key, PCI/PII banner, Clarification Q&A, tabbed Agent 1 workspace, interactive MCDA sliders, HITL sign-off, and Audit Trail |
-| `src/index.css` | Emerald Jade & Charcoal Onyx design system (strict zero-blue palette, high contrast, responsive grid) |
+| `src/index.css` | Emerald Jade & Charcoal Onyx design system |
 | `src/agents/orchestrator.js` | Central multi-agent coordinator and timestamped audit logger |
 | `src/agents/privacyGuard.js` | PCI/PII redaction regex engine + prompt-injection & domain validator |
 | `src/agents/knowledgeBase.js` | Versioned financial regulatory clauses + local RAG retriever + stakeholder roles |

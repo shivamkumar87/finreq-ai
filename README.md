@@ -1,4 +1,4 @@
-# FinSpec AI — Financial Requirements Engineering & SDLC Selection Platform
+# FinReq AI — Financial Requirements Engineering & SDLC Selection Platform
 
 An Agentic AI platform tailored for the **Financial Services, Banking & FinTech sector** that automates software requirements elicitation, statutory compliance analysis, quality auditing, and hybrid Software Development Life Cycle (SDLC) selection.
 
