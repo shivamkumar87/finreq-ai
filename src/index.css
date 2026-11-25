@@ -76,6 +76,19 @@ body {
 
 .brand {
   display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.brand-logo {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.brand-text {
+  display: flex;
   align-items: baseline;
   gap: 0.65rem;
   flex-wrap: wrap;

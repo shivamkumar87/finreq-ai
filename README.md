@@ -1,4 +1,4 @@
-# FinReq AI
+# <img src="public/favicon.svg" width="28" height="28" alt="" /> FinReq AI
 
 Requirements engineering, regulatory compliance mapping, and SDLC selection platform for financial services, banking, and fintech software projects.
 

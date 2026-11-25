@@ -447,8 +447,21 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-name">FinReq AI</span>
-          <span className="brand-sub">Financial Requirements &amp; SDLC Workbench</span>
+          <svg
+            className="brand-logo"
+            viewBox="0 0 32 32"
+            fill="none"
+            aria-hidden="true"
+          >
+            <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7" fill="#13161b" stroke="#252a33" strokeWidth="1.5" />
+            <path d="M16 5L7.5 9.2V16.8C7.5 21.9 11.1 26.5 16 27.8C20.9 26.5 24.5 21.9 24.5 16.8V9.2L16 5Z" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M16 10.8V21.2" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M12.5 13.8H17.8C18.9 13.8 19.8 14.6 19.8 15.6C19.8 16.6 18.9 17.4 17.8 17.4H14.2C13.1 17.4 12.2 18.2 12.2 19.2C12.2 20.2 13.1 21 14.2 21H19.5" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="brand-text">
+            <span className="brand-name">FinReq AI</span>
+            <span className="brand-sub">Financial Requirements &amp; SDLC Workbench</span>
+          </div>
         </div>
 
         <div className="toolbar-group">
