@@ -18,23 +18,35 @@ Software teams in banking and fintech have to reconcile fast product delivery wi
 ## Processing Flow
 
 ```mermaid
-flowchart TD
-    Input["Scenario Description or Policy File (.txt, .md, .csv, .json)\n+ Stakeholder Role + Optional Gemini API Key"]
-    Guard["1. Privacy & Security Guardrail (privacyGuard.js)\nRedacts PAN, IBAN/Account, Gov ID, Email, Phone, API Keys\nBlocks prompt-injection & off-domain text"]
-    RAG["2. Financial RAG Retriever (knowledgeBase.js)\nScores scenario against 8 regulatory standards\nReturns top 5 clauses with confidence scores"]
-    Req["3. Requirements & Quality Engineer (requirementAgent.js)\nLocal rule engine or Gemini 2.5 Flash\nGenerates FRs, NFRs, Risk Register, RTM & Quality Audit"]
-    Clarify["4. Clarification Agent (clarificationAgent.js)\nDetects unstated TPS, RTO/RPO, rail & cadence gaps"]
-    SDLC["5. SDLC Architect (sdlcAgent.js)\nScores 8 factors, applies 6 override rules\nRanks 6 SDLC models & builds 5-phase workflow"]
-    HITL["6. Review & Export (App.jsx & srsExporter.js)\nPer-requirement Approve/Flag, live slider tuning,\nSDLC sign-off & IEEE 830 Markdown SRS export"]
+flowchart LR
+    Input["Input\nScenario or File\n+ Role & API Key"]
+    Guard["1. Privacy Guard\nRedacts PAN, IBAN,\nGov ID, Keys, PII\nBlocks Injections"]
+    RAG["2. Financial RAG\nScores 8 Standards\nReturns Top 5\nCited Clauses"]
 
-    Input --> Guard
-    Guard --> RAG
-    RAG --> Req
-    Req --> Clarify
-    Clarify -->|"Stakeholder answers refine re-run"| Req
-    Clarify -->|"Constraints adjust factor scores"| SDLC
-    Req --> SDLC
-    SDLC --> HITL
+    subgraph ReqStage["3. Requirements & Audit"]
+        direction TB
+        Gen["FR / NFR Synthesis\nLocal Engine or Gemini"]
+        Audit["IEEE 830 Audit\nAmbiguities, Conflicts,\nRisk Register & RTM"]
+        Gen --> Audit
+    end
+
+    Clarify["4. Clarification\nDetects TPS, RTO/RPO,\nRail & Cadence Gaps"]
+
+    subgraph SDLCStage["5. SDLC Architect"]
+        direction TB
+        MCDA["8-Factor MCDA\n+ 6 Override Rules"]
+        WF["6 Ranked Models\n+ 5-Phase Workflow"]
+        MCDA --> WF
+    end
+
+    HITL["6. Review & Export\nApprove / Flag, Sliders,\nSDLC Sign-Off &\nMarkdown SRS"]
+
+    Input --> Guard --> RAG --> ReqStage
+    ReqStage --> Clarify
+    ReqStage --> SDLCStage
+    Clarify -->|"Answers refine re-run"| ReqStage
+    Clarify -->|"Adjust factors"| SDLCStage
+    SDLCStage --> HITL
 ```
 
 ---

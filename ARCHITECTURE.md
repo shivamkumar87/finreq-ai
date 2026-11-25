@@ -12,39 +12,40 @@ Technical architecture, data flows, scoring formulas, and module responsibilitie
 Every analysis runs through `AgentOrchestrator.runPipeline(rawScenarioText, options)` in `src/agents/orchestrator.js`:
 
 ```mermaid
-flowchart TD
-    UI["React UI (src/App.jsx)"] -->|rawScenarioText + options| Orch["AgentOrchestrator.runPipeline()"]
+flowchart LR
+    UI["React UI\nsrc/App.jsx"]
+    Orch["AgentOrchestrator\nrunPipeline"]
 
-    subgraph Stage1["Stage 1: Privacy & Validation (privacyGuard.js)"]
-        Mask["maskSensitiveFinancialData()\nMasks PAN, IBAN/Acct, Gov ID, Secrets, Email, Phone"]
-        Val["validateFinancialScenario()\nLength >= 15, words >= 4, injection & profanity block, financial keywords"]
+    subgraph S1["Stage 1: Privacy Guard"]
+        direction TB
+        Mask["maskSensitiveFinancialData\nPAN, IBAN, Gov ID, Keys, PII"]
+        Val["validateFinancialScenario\nLength, Injections, Domain"]
         Mask --> Val
     end
 
-    Orch --> Mask
-    Val -->|Invalid| Err["Throw Error + Partial Audit Logs"]
-    Val -->|Valid maskedText| RAG["Stage 2: retrieveFinancialContext()\n(knowledgeBase.js)\nKeyword scoring over 8 clauses -> top 5"]
+    Err["Throw Error\n+ Partial Logs"]
+    RAG["Stage 2: Financial RAG\nretrieveFinancialContext\nTop 5 of 8 Clauses"]
 
-    RAG --> ModeCheck{"Gemini API key\nlength > 10?"}
-
-    subgraph Stage3["Stage 3: RequirementAgent (requirementAgent.js)"]
-        LLM["_callGeminiLLM()\nPOST gemini-2.5-flash (temp 0.2, JSON)\nGrounded with top 5 RAG clauses"]
-        Local["_generateLocalRAGRequirements()\nDomain detection + template synthesis\n4 FRs + 4 NFRs"]
-        Audit["auditRequirementQuality()\n6 vague-term checks + 3 conflict checks\n+ 4-item Risk Register + RTM"]
-        LLM -->|On HTTP/JSON error| Local
-        LLM -->|Success| Audit
+    subgraph S3["Stage 3: RequirementAgent"]
+        direction TB
+        Mode{"API Key\n> 10 chars?"}
+        LLM["_callGeminiLLM\ngemini-2.5-flash"]
+        Local["_generateLocalRAGRequirements\n4 FRs + 4 NFRs"]
+        Audit["auditRequirementQuality\nQuality, Conflicts, Risk, RTM"]
+        Mode -->|Yes| LLM
+        Mode -->|No| Local
+        LLM -->|Error fallback| Local
+        LLM --> Audit
         Local --> Audit
     end
 
-    ModeCheck -->|Yes| LLM
-    ModeCheck -->|No| Local
+    Clarify["Stage 4: Clarification\ngenerateClarifications\nTPS, Regime, DR, Rails"]
+    SDLC["Stage 5: SDLC Architect\nevaluateSDLC\n8 Factors, 6 Rules, 5 Phases"]
+    Out["Return Result Bundle\nto UI & SRS Exporter"]
 
-    Audit --> Clarify["Stage 4: ClarificationAgent.generateClarifications()\n(clarificationAgent.js)\nDetects missing TPS, regime, RTO/RPO, rails, release cadence"]
-
-    Clarify --> SDLC["Stage 5: SdlcAgent.evaluateSDLC()\n(sdlcAgent.js)\n8-factor extraction + weighted MCDA + 6 rules + 5-phase workflow"]
-
-    SDLC --> Return["Return Pipeline Result Bundle"]
-    Return --> UI
+    UI --> Orch --> S1
+    Val -->|Invalid| Err
+    Val -->|Valid| RAG --> S3 --> Clarify --> SDLC --> Out
 ```
 
 ---
