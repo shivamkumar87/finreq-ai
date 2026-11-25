@@ -12,42 +12,60 @@ Technical architecture, data flows, scoring formulas, and module responsibilitie
 Every analysis runs through `AgentOrchestrator.runPipeline(rawScenarioText, options)` in `src/agents/orchestrator.js`:
 
 ```mermaid
-%%{init: {'flowchart': {'rankSpacing': 60, 'nodeSpacing': 50, 'padding': 20, 'curve': 'basis'}}}%%
+%%{init: {'flowchart': {'rankSpacing': 48, 'nodeSpacing': 42, 'padding': 18, 'curve': 'basis'}}}%%
 flowchart TD
-    UI["React UI (src/App.jsx)\nScenario Input, Role & Optional API Key"]
-    Orch["AgentOrchestrator.runPipeline()\nsrc/agents/orchestrator.js"]
+    UI(["React UI (src/App.jsx)<br/>Scenario Input, Role & Optional API Key"])
+    Orch["AgentOrchestrator.runPipeline()<br/>src/agents/orchestrator.js"]
 
     subgraph S1["Stage 1: Privacy & Validation — privacyGuard.js"]
         direction TB
-        Mask["maskSensitiveFinancialData()\nPAN, IBAN, Gov ID, Secrets, Email, Phone"]
-        Val["validateFinancialScenario()\nLength, Injection, Profanity & Domain Checks"]
+        Mask["maskSensitiveFinancialData()<br/>PAN, IBAN, Gov ID, Secrets, Email, Phone"]
+        Val{"validateFinancialScenario()<br/>Length, Injection, Profanity & Domain"}
         Mask --> Val
     end
 
-    Err["Throw Error + Partial Audit Logs"]
-    RAG["Stage 2: Regulatory Retrieval — knowledgeBase.js\nScores 8 Standards -> Top 5 Clauses"]
-    Mode{"Gemini API Key\nProvided?"}
+    Err(["Throw Error + Partial Audit Logs"])
+    RAG["Stage 2: Regulatory Retrieval — knowledgeBase.js<br/>Scores 8 Standards -> Top 5 Clauses"]
 
     subgraph S3["Stage 3: Requirement Extraction & Audit — requirementAgent.js"]
         direction TB
-        LLM["_callGeminiLLM()\ngemini-2.5-flash (JSON, Grounded)"]
-        Local["_generateLocalRAGRequirements()\nDomain Templates (4 FRs + 4 NFRs)"]
-        Audit["auditRequirementQuality()\nAmbiguities, Conflicts, Risk Register & RTM"]
+        Mode{"Gemini API Key<br/>length > 10?"}
+        LLM["_callGeminiLLM()<br/>gemini-2.5-flash (JSON, Grounded)"]
+        Local["_generateLocalRAGRequirements()<br/>Domain Templates (4 FRs + 4 NFRs)"]
+        Audit["auditRequirementQuality()<br/>Ambiguities, Conflicts, Risk Register & RTM"]
+        Mode -->|"Yes"| LLM
+        Mode -->|"No"| Local
+        LLM -.->|"Error Fallback"| Local
         LLM --> Audit
         Local --> Audit
     end
 
-    Clarify["Stage 4: Adaptive Clarification (clarificationAgent.js)\nTPS, Regime, RTO/RPO, Payment Rails, Cadence"]
-    SDLC["Stage 5: SDLC Architect (sdlcAgent.js)\n8 Factors, Weighted MCDA, 6 Rules, 5-Phase Workflow"]
-    Out["Result Bundle -> UI Workspace & SRS Exporter"]
+    Clarify["Stage 4: Clarification — clarificationAgent.js<br/>TPS, Regime, RTO/RPO, Payment Rails, Cadence"]
+    SDLC["Stage 5: SDLC Architect — sdlcAgent.js<br/>8 Factors, Weighted MCDA, 6 Rules, 5 Phases"]
+    Out(["Result Bundle -> UI Workspace & SRS Exporter"])
 
     UI --> Orch --> Mask
     Val -->|"Invalid"| Err
     Val -->|"Valid"| RAG --> Mode
-    Mode -->|"Yes"| LLM
-    Mode -->|"No"| Local
-    LLM -.->|"Error Fallback"| Local
-    Audit --> Clarify --> SDLC --> Out
+    Audit --> Clarify
+    Audit --> SDLC
+    Clarify -->|"Refines"| SDLC
+    SDLC --> Out
+
+    classDef io fill:#00ABE4,stroke:#00749E,color:#FFFFFF,stroke-width:1.5px;
+    classDef step fill:#FFFFFF,stroke:#ACC8E8,color:#1E293B,stroke-width:1.5px;
+    classDef gate fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:1.5px;
+    classDef danger fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:1.5px;
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#14532D,stroke-width:1.5px;
+
+    class UI io;
+    class Orch,Mask,RAG,LLM,Local,Audit,Clarify,SDLC step;
+    class Val,Mode gate;
+    class Err danger;
+    class Out done;
+
+    style S1 fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
+    style S3 fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
 ```
 
 ---
@@ -57,21 +75,29 @@ flowchart TD
 Once the initial pipeline completes, three client-side loops run without requiring a backend:
 
 ```mermaid
-%%{init: {'flowchart': {'rankSpacing': 55, 'nodeSpacing': 45, 'padding': 20, 'curve': 'basis'}}}%%
+%%{init: {'flowchart': {'rankSpacing': 48, 'nodeSpacing': 40, 'padding': 18, 'curve': 'basis'}}}%%
 flowchart TD
-    State["Pipeline Result State"]
+    State(["Pipeline Result State"])
 
-    Clarif["Clarification Answers\nRe-runs orchestrator pipeline"]
-    Sliders["Interactive Factor Sliders\nRuns SdlcAgent.evaluateSDLC live"]
-    HITL["HITL Review & Sign-Off\nAppends events to audit log"]
+    Clarif["Clarification Answers<br/>Re-runs orchestrator.runPipeline()"]
+    Sliders["Interactive Factor Sliders<br/>Calls liveSdlcAgent.evaluateSDLC(_fromSlider)"]
+    HITL["Review & Sign-Off<br/>Updates approvalMap, sdlcSignOff & logs"]
 
-    Updated["Updated Requirements, SDLC Ranking & Audit Trail"]
-    Export["SRS Exporter (srsExporter.js)\nGenerates IEEE 830 Markdown"]
+    Updated["Updated Requirements, SDLC Ranking & Audit Log"]
+    Export(["SRS Exporter (srsExporter.js)<br/>Generates IEEE 830 Markdown"])
 
     State --> Clarif --> Updated
     State --> Sliders --> Updated
     State --> HITL --> Updated
     Updated --> Export
+
+    classDef io fill:#00ABE4,stroke:#00749E,color:#FFFFFF,stroke-width:1.5px;
+    classDef step fill:#FFFFFF,stroke:#ACC8E8,color:#1E293B,stroke-width:1.5px;
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#14532D,stroke-width:1.5px;
+
+    class State io;
+    class Clarif,Sliders,HITL,Updated step;
+    class Export done;
 ```
 
 ---

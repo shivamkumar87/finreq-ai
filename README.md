@@ -18,23 +18,61 @@ Financial software specifications combine product features with regulatory oblig
 ## Processing Flow
 
 ```mermaid
-%%{init: {'flowchart': {'rankSpacing': 60, 'nodeSpacing': 50, 'padding': 22, 'curve': 'basis'}}}%%
+%%{init: {'flowchart': {'rankSpacing': 48, 'nodeSpacing': 44, 'padding': 18, 'curve': 'basis'}}}%%
 flowchart TD
-    Input["User Input\nScenario Text or Policy File + Stakeholder Role"]
-    Guard["1. Privacy & Security Guardrail\nMasks PAN, IBAN, Gov ID, Keys, PII | Blocks Injections"]
-    RAG["2. Financial Regulatory RAG\nMatches 8 Standards | Returns Top 5 Cited Clauses"]
-    Req["3. Requirements & Quality Engineer\nGenerates FRs & NFRs | Audits Ambiguities, Risks & RTM"]
-    Clarify["4. Adaptive Clarification\nSurfaces Unstated TPS, RTO/RPO, Rail & Cadence Gaps"]
-    SDLC["5. SDLC Architect\n8-Factor MCDA + 6 Rules | Ranks 6 Models & 5 Phases"]
-    HITL["6. Human Review & Export\nApprove/Flag, Live Sliders, Sign-Off & Markdown SRS"]
+    Start(["Scenario Text or Policy File<br/>+ Stakeholder Role + Optional API Key"])
 
-    Input --> Guard
-    Guard --> RAG
-    RAG --> Req
-    Req --> Clarify
-    Clarify --> SDLC
-    Clarify -.->|"Re-run with answers"| Req
-    SDLC --> HITL
+    subgraph Gate["1. Privacy & Security Guard"]
+        direction TB
+        Mask["Mask PCI / PII Tokens<br/>PAN, IBAN, Gov ID, Email, Phone, Secrets"]
+        Valid{"Valid Financial Input<br/>& No Prompt Injection?"}
+        Mask --> Valid
+    end
+
+    Reject(["Reject Input<br/>Show Guardrail Error"])
+    RAG["2. Financial Regulatory RAG<br/>Score 8 Standards -> Top 5 Cited Clauses"]
+
+    subgraph Engine["3. Requirements & Audit Engine"]
+        direction TB
+        Mode{"Gemini API Key<br/>Provided?"}
+        Local["Local Rule Engine<br/>4 Domain FRs + 4 NFRs"]
+        Gemini["Gemini 2.5 Flash<br/>RAG-Grounded JSON"]
+        Audit["IEEE 830 Quality Audit<br/>Ambiguities, Conflicts, Risks & RTM"]
+        Mode -->|"No (Default)"| Local
+        Mode -->|"Yes"| Gemini
+        Gemini -.->|"Fallback on error"| Local
+        Local --> Audit
+        Gemini --> Audit
+    end
+
+    Clarify["4. Clarification Questions<br/>TPS, Regime, RTO/RPO, Rails, Cadence"]
+    SDLC["5. SDLC Architect<br/>8-Factor MCDA + 6 Rules + 5 Phases"]
+    Review["6. Review & Tuning Workbench<br/>Approve/Flag Reqs, Live Sliders, Sign-Off"]
+    Export(["Export IEEE 830 SRS (.md)<br/>Specs, RTM, SDLC Plan & Audit Log"])
+
+    Start --> Mask
+    Valid -->|"No"| Reject
+    Valid -->|"Yes"| RAG --> Mode
+    Audit --> Clarify
+    Audit --> SDLC
+    Clarify -->|"Constraints adjust factors"| SDLC
+    Clarify -.->|"Re-run with answers"| Mode
+    SDLC --> Review --> Export
+
+    classDef io fill:#00ABE4,stroke:#00749E,color:#FFFFFF,stroke-width:1.5px;
+    classDef step fill:#FFFFFF,stroke:#ACC8E8,color:#1E293B,stroke-width:1.5px;
+    classDef gate fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:1.5px;
+    classDef danger fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:1.5px;
+    classDef done fill:#DCFCE7,stroke:#16A34A,color:#14532D,stroke-width:1.5px;
+
+    class Start io;
+    class Mask,RAG,Local,Gemini,Audit,Clarify,SDLC,Review step;
+    class Valid,Mode gate;
+    class Reject danger;
+    class Export done;
+
+    style Gate fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
+    style Engine fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
 ```
 
 ---
