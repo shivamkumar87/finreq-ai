@@ -39,13 +39,66 @@ const FACTOR_LABELS = [
 ];
 
 const THEME_OPTIONS = [
-  { id: 'mercury-light', label: '1. Crisp Alabaster & Indigo (Light)' },
-  { id: 'warm-sand', label: '2. Warm Sand & Clay (Light)' },
-  { id: 'editorial-plum', label: '3. Paper & Bordeaux (Light)' },
-  { id: 'nord-dark', label: '4. Nordic Slate & Frost (Dark)' },
-  { id: 'noir-minimal', label: '5. Monochrome Noir (Dark)' },
-  { id: 'rose-dark', label: '6. Midnight Indigo & Periwinkle (Dark)' }
+  { id: 'warm-sand', label: '1. Warm Sand & Terracotta' },
+  { id: 'ivory-olive', label: '2. Ivory & Deep Olive' },
+  { id: 'parchment-amber', label: '3. Parchment & Ochre' },
+  { id: 'linen-burgundy', label: '4. Linen & Bordeaux' },
+  { id: 'oatmeal-espresso', label: '5. Oatmeal & Espresso' },
+  { id: 'sandstone-teal', label: '6. Sandstone & Warm Teal' }
 ];
+
+const FONT_OPTIONS = [
+  { id: 'editorial-serif', label: '1. Source Serif + IBM Plex' },
+  { id: 'display-fraunces', label: '2. Fraunces + DM Sans' },
+  { id: 'modern-grotesk', label: '3. Space Grotesk + Inter' },
+  { id: 'clean-fintech', label: '4. Plus Jakarta + DM Sans' }
+];
+
+function CycleSelect({ id, label, value, options, onChange }) {
+  const step = (delta) => {
+    const idx = options.findIndex((o) => o.id === value);
+    const nextIdx = (idx + delta + options.length) % options.length;
+    onChange(options[nextIdx].id);
+  };
+
+  return (
+    <>
+      <label className="field-label" htmlFor={id}>{label}</label>
+      <div className="theme-picker">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => step(-1)}
+          title={`Previous ${label.toLowerCase()}`}
+          aria-label={`Previous ${label.toLowerCase()}`}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <select
+          id={id}
+          className="select-ctrl"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => step(1)}
+          title={`Next ${label.toLowerCase()}`}
+          aria-label={`Next ${label.toLowerCase()}`}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+    </>
+  );
+}
 
 function RequirementRow({ item, kind, status, isExpanded, onToggleExpand, onDecision }) {
   const rowClass = status === 'Approved'
@@ -170,17 +223,20 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     try {
       const saved = window.localStorage.getItem('finreq_theme');
-      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'mercury-light';
+      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'warm-sand';
     } catch {
-      return 'mercury-light';
+      return 'warm-sand';
     }
   });
 
-  const stepTheme = (delta) => {
-    const idx = THEME_OPTIONS.findIndex((t) => t.id === theme);
-    const nextIdx = (idx + delta + THEME_OPTIONS.length) % THEME_OPTIONS.length;
-    setTheme(THEME_OPTIONS[nextIdx].id);
-  };
+  const [fontPair, setFontPair] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('finreq_font');
+      return FONT_OPTIONS.some((f) => f.id === saved) ? saved : 'editorial-serif';
+    } catch {
+      return 'editorial-serif';
+    }
+  });
 
   const [pipelineResult, setPipelineResult] = useState(null);
   const [baselineFactors, setBaselineFactors] = useState(null);
@@ -238,12 +294,14 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.font = fontPair;
     try {
       window.localStorage.setItem('finreq_theme', theme);
+      window.localStorage.setItem('finreq_font', fontPair);
     } catch {
       // Ignore storage errors in restricted contexts
     }
-  }, [theme]);
+  }, [theme, fontPair]);
 
   useEffect(() => {
     executePipeline({
@@ -500,39 +558,21 @@ export default function App() {
         </div>
 
         <div className="toolbar-group">
-          <label className="field-label" htmlFor="theme-select">Theme</label>
-          <div className="theme-picker">
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => stepTheme(-1)}
-              title="Previous theme"
-              aria-label="Previous theme"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <select
-              id="theme-select"
-              className="select-ctrl"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-            >
-              {THEME_OPTIONS.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => stepTheme(1)}
-              title="Next theme"
-              aria-label="Next theme"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
+          <CycleSelect
+            id="theme-select"
+            label="Theme"
+            value={theme}
+            options={THEME_OPTIONS}
+            onChange={setTheme}
+          />
+
+          <CycleSelect
+            id="font-select"
+            label="Font"
+            value={fontPair}
+            options={FONT_OPTIONS}
+            onChange={setFontPair}
+          />
 
           <label className="field-label" htmlFor="role-select">Role</label>
           <select
