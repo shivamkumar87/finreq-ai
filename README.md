@@ -58,21 +58,6 @@ flowchart TD
     Clarify -->|"Constraints adjust factors"| SDLC
     Clarify -.->|"Re-run with answers"| Mode
     SDLC --> Review --> Export
-
-    classDef io fill:#00ABE4,stroke:#00749E,color:#FFFFFF,stroke-width:1.5px;
-    classDef step fill:#FFFFFF,stroke:#ACC8E8,color:#1E293B,stroke-width:1.5px;
-    classDef gate fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:1.5px;
-    classDef danger fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:1.5px;
-    classDef done fill:#DCFCE7,stroke:#16A34A,color:#14532D,stroke-width:1.5px;
-
-    class Start io;
-    class Mask,RAG,Local,Gemini,Audit,Clarify,SDLC,Review step;
-    class Valid,Mode gate;
-    class Reject danger;
-    class Export done;
-
-    style Gate fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
-    style Engine fill:#F2F7FD,stroke:#CFE0F3,color:#1E293B
 ```
 
 ---
