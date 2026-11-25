@@ -1,14 +1,9 @@
-/**
- * IEEE 830 Financial Software Requirements Specification (SRS) & SDLC Blueprint Exporter
- * Includes PCI/PII redaction log, RAG citations, confidence scores, quality/conflict audit,
- * FMEA Risk Register, Requirements Traceability Matrix (RTM), MCDA ranking, 5-phase financial
- * workflow, and recorded Human-in-the-Loop (HITL) approvals.
- */
+// Formats requirements, compliance mappings, and SDLC recommendations into IEEE 830 Markdown.
 
 export function generateSRSMarkdown({
   title,
   scenarioText,
-  phiResult,
+  privacyResult,
   requirementResult,
   sdlcResult,
   approvalMap = {},
@@ -43,7 +38,7 @@ export function generateSRSMarkdown({
 **Primary Stakeholder Perspective:** ${stakeholderRole}  
 **Generation Engine:** ${generationMode}  
 **Average Confidence Score:** ${Math.round((metrics.averageConfidence || 0.94) * 100)}%  
-**PCI/PII Redactions Applied:** ${phiResult?.totalRedacted || 0} sensitive identifier(s) masked before inference  
+**PCI/PII Redactions Applied:** ${privacyResult?.totalRedacted || 0} sensitive identifier(s) masked before processing  
 **Generated On:** ${new Date().toLocaleString()}
 
 ---
@@ -58,7 +53,7 @@ ${retrievedKnowledge.map((k) => `| **${k.id}** | ${k.standard} (${k.clause}) | $
 
 ---
 
-## 2. FUNCTIONAL REQUIREMENTS (Agent 1)
+## 2. FUNCTIONAL REQUIREMENTS
 
 ${functionalRequirements.map((fr, idx) => `### 2.${idx + 1} [${fr.id}] ${fr.title}
 - **Approval Status:** ${getStatus(fr.id)}
@@ -75,7 +70,7 @@ ${(fr.acceptanceCriteria || []).map((ac) => `  - ${ac}`).join('\n')}
 
 ---
 
-## 3. NON-FUNCTIONAL REQUIREMENTS (Agent 1)
+## 3. NON-FUNCTIONAL REQUIREMENTS
 
 ${nonFunctionalRequirements.map((nfr, idx) => `### 3.${idx + 1} [${nfr.id}] ${nfr.title}
 - **Approval Status:** ${getStatus(nfr.id)}
@@ -118,7 +113,7 @@ ${traceabilityMatrix.map((t) => `| **${t.requirementId}** | ${t.title} | ${t.typ
 
 ---
 
-## 6. HYBRID SDLC SELECTION (Agent 2 — MCDA + Deterministic Rules)
+## 6. SDLC SELECTION (MCDA & Governance Rules)
 
 ### 6.1 Primary Recommendation: ${primaryModel.name} (${primaryModel.suitabilityScore})
 ${primaryModel.triggeredRule ? `- **Deterministic Rule Triggered:** ${primaryModel.triggeredRule}\n` : ''}- **Justification:** ${primaryModel.rationale}

@@ -1,8 +1,4 @@
-/**
- * Versioned Financial & Banking Regulatory Knowledge Base + Local RAG Retriever
- * Standards: PCI-DSS v4.0, RBI CSF & DLG 2023, GDPR, Basel III/IV (BCBS 239),
- * SOX 404, ISO 20022, SEBI Algo-Trading Audit, and ISO/IEC 25010.
- */
+// Financial regulatory knowledge base entries and search retrieval helpers.
 
 export const STAKEHOLDER_ROLES = [
   {
@@ -136,12 +132,7 @@ export const FINANCIAL_KNOWLEDGE_BASE = [
   }
 ];
 
-// Backward-compatible alias for orchestrator
-export const HOSPITAL_KNOWLEDGE_BASE = FINANCIAL_KNOWLEDGE_BASE;
-
-/**
- * Local RAG Retriever: Scores financial knowledge base items against query text and returns top-K grounded citations
- */
+// Scores regulatory clauses against query tokens and returns top matching citations
 export function retrieveFinancialContext(queryText, clarificationAnswers = {}, topK = 5) {
   const combined = [
     queryText || '',
@@ -180,7 +171,4 @@ export function retrieveFinancialContext(queryText, clarificationAnswers = {}, t
     .sort((a, b) => b.rawScore - a.rawScore)
     .slice(0, topK);
 }
-
-// Backward-compatible alias for orchestrator
-export const retrieveHealthcareContext = retrieveFinancialContext;
 

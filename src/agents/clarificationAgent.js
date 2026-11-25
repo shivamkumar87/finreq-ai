@@ -1,8 +1,4 @@
-/**
- * Adaptive Clarification & Financial Stakeholder Interview Agent
- * Detects missing transaction concurrency, regulatory jurisdiction, disaster recovery (RTO/RPO),
- * interbank clearing protocols, and release cadence, then generates targeted follow-up prompts.
- */
+// Generates clarification prompts for missing operational constraints.
 
 export class ClarificationAgent {
   constructor() {

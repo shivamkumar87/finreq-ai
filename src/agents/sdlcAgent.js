@@ -1,11 +1,4 @@
-/**
- * Agent 2: Financial SDLC Selection & Workflow Architecture Agent
- * Hybrid decision engine combining:
- * 1. Quantitative 8-Factor Extraction (with financial signals + clarification answers + live UI slider overrides)
- * 2. Multi-Criteria Decision Analysis (MCDA) across all 6 candidate SDLC models
- * 3. Deterministic Financial Specification Rule Matching
- * 4. Financial-Tailored 5-Phase SDLC Workflow with statutory compliance & penetration testing gates
- */
+// SDLC decision engine evaluating MCDA factor scoring and governance workflows.
 
 import { validateFinancialScenario } from './privacyGuard.js';
 
@@ -139,7 +132,7 @@ export class SdlcAgent {
       formalVerificationNeed: verif
     } = factors;
 
-    // 1. Raw MCDA Weighted Utility Scores
+    // Calculate MCDA utility scores
     let waterfallScore = (stab * 0.38) + (verif * 0.22) + ((100 - chg) * 0.25) + ((100 - unc) * 0.15);
     let vModelScore = (verif * 0.38) + (fail * 0.22) + (reg * 0.18) + (stab * 0.12) + ((100 - chg) * 0.10);
     let spiralScore = (unc * 0.44) + (fail * 0.24) + ((100 - stab) * 0.16) + (chg * 0.16);
@@ -148,7 +141,7 @@ export class SdlcAgent {
     let devSecOpsScore = (deploy * 0.38) + (sec * 0.32) + (chg * 0.18) + ((100 - stab) * 0.12);
     let hybridScore = (reg * 0.28) + (sec * 0.24) + (chg * 0.22) + (deploy * 0.14) + (verif * 0.12);
 
-    // 2. Deterministic Specification Rules
+    // Apply rule overrides for specific architectural archetypes
     let triggeredRule = null;
 
     const isWaterfallRule = (!isManualSliderTuning && textLower.includes('stable requirements') && textLower.includes('approvals')) ||

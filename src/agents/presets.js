@@ -1,6 +1,4 @@
-/**
- * Financial Services & Banking Case Studies + 6 SDLC Deterministic Rule Scenarios
- */
+// Financial scenario presets and SDLC test configurations.
 
 export const FINANCIAL_PRESETS = [
   {
@@ -44,7 +42,7 @@ export const FINANCIAL_PRESETS = [
     title: 'High-Frequency Algorithmic Trading & AI Fraud Surveillance',
     category: 'Capital Markets / AI Risk',
     defaultRole: 'cro',
-    scenarioDescription: `Build an ultra-low-latency High-Frequency Algorithmic Trading (HFT) and real-time AI Fraud & Market Abuse Surveillance platform. The system ingests streaming multi-exchange order books, evaluates novel deep learning predictive models and reinforcement learning execution algorithms, and enforces sub-millisecond pre-trade risk controls. High uncertainty and technical risk surround model slippage, market regime shifts, and complex hardware acceleration (FPGA/kernel bypass), requiring iterative prototyping cycles, Monte Carlo risk modeling, and continuous clinical Go/No-Go reviews.`,
+    scenarioDescription: `Build an ultra-low-latency High-Frequency Algorithmic Trading (HFT) and real-time AI Fraud & Market Abuse Surveillance platform. The system ingests streaming multi-exchange order books, evaluates novel deep learning predictive models and reinforcement learning execution algorithms, and enforces sub-millisecond pre-trade risk controls. High uncertainty and technical risk surround model slippage, market regime shifts, and complex hardware acceleration (FPGA/kernel bypass), requiring iterative prototyping cycles, Monte Carlo risk modeling, and continuous risk-committee Go/No-Go reviews.`,
     tags: ['Algo Trading', 'AI Fraud Detection', 'High Uncertainty', 'Microsecond SLA'],
     defaultFactors: {
       requirementStability: 48,
@@ -95,9 +93,6 @@ export const FINANCIAL_PRESETS = [
   }
 ];
 
-// Backward-compatible alias for orchestrator
-export const HOSPITAL_PRESETS = FINANCIAL_PRESETS;
-
 export const FINANCIAL_SDLC_EXAMPLES = [
   {
     label: 'Waterfall: Statutory Central Bank Reporting',
@@ -107,7 +102,7 @@ export const FINANCIAL_SDLC_EXAMPLES = [
   {
     label: 'V-Model: Core Banking RTGS Wire Settlement',
     title: 'RTGS High-Value Wire Settlement (Strict V&V → V-Model)',
-    scenario: 'A real-time interbank gross settlement and high-value wire transfer software module requiring strict verification/validation, formal double-entry mathematical proofs, and life-critical financial audit gates.'
+    scenario: 'A real-time interbank gross settlement and high-value wire transfer software module requiring strict verification/validation, formal double-entry mathematical proofs, and mission-critical financial audit gates.'
   },
   {
     label: 'Spiral: AI Market Surveillance R&D',
@@ -130,7 +125,4 @@ export const FINANCIAL_SDLC_EXAMPLES = [
     scenario: 'A multi-channel core banking and instant payment gateway platform subject to high regulation (PCI-DSS 4.0, RBI CSF, GDPR) and evolving requirements as new payment rails and partner APIs roll out.'
   }
 ];
-
-// Backward-compatible alias for test suites
-export const HOSPITAL_SDLC_EXAMPLES = FINANCIAL_SDLC_EXAMPLES;
 

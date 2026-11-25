@@ -1,18 +1,9 @@
-/**
- * Agent 1: Financial Requirements Engineering, Quality & Conflict Analysis Agent
- * Supports:
- * 1. Live RAG-Grounded Gemini LLM mode (when user supplies a Gemini API key)
- * 2. Local RAG-Grounded Financial Engine (deterministic fallback that composes
- *    module-specific banking requirements, citations, confidence scores,
- *    ambiguity checks, conflict detection, risk register, and IEEE 830 RTM).
- */
+// Requirements extraction, IEEE 830 quality auditing, conflict analysis, and traceability matrix generation.
 
 import { validateFinancialScenario } from './privacyGuard.js';
 import { retrieveFinancialContext, STAKEHOLDER_ROLES } from './knowledgeBase.js';
 
-/**
- * Audits raw scenario text for IEEE 830 ambiguities and stakeholder requirement conflicts
- */
+// Checks scenario text for vague terms and stakeholder requirement conflicts
 export function auditRequirementQuality(scenarioText, functionalReqs = [], nonFunctionalReqs = []) {
   const lower = (scenarioText || '').toLowerCase();
   const ambiguities = [];
@@ -124,9 +115,7 @@ export class RequirementAgent {
     this.name = 'Financial Requirements Engineering Agent';
   }
 
-  /**
-   * Optional Live Gemini LLM call grounded in RAG context
-   */
+  // Live Gemini call with RAG grounding
   async _callGeminiLLM(maskedScenario, stakeholderObj, ragDocs, clarificationAnswers, apiKey) {
     const ragContext = ragDocs
       .map((d) => `${d.citation} (${d.jurisdiction}): ${d.requirement}`)
@@ -136,7 +125,7 @@ export class RequirementAgent {
       .map(([k, v]) => `- ${k}: ${v}`)
       .join('\n');
 
-    const prompt = `You are a senior Financial Requirements Engineering AI Agent.
+    const prompt = `You are a financial software requirements engineer.
 Analyze the following financial software scenario from the perspective of stakeholder: ${stakeholderObj.label} (${stakeholderObj.focus}).
 
 SCENARIO (Sensitive data already masked):
@@ -218,9 +207,7 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
     return parsed;
   }
 
-  /**
-   * Composes dynamic, financial-module-specific requirements grounded in RAG context
-   */
+  // Generates module-specific requirements based on detected financial domain
   _generateLocalRAGRequirements(maskedScenario, stakeholderObj, ragDocs, clarificationAnswers = {}) {
     const lower = (maskedScenario + ' ' + Object.values(clarificationAnswers).join(' ')).toLowerCase();
 
@@ -430,9 +417,7 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
     return { domain, functionalReqs, nonFunctionalReqs };
   }
 
-  /**
-   * Main analysis entry point
-   */
+  // Analyzes scenario using either Gemini API or rule-based engine
   async analyzeScenario(scenarioText, options = {}) {
     const { stakeholderRole = 'ciso', clarificationAnswers = {}, apiKey = '' } = options;
 

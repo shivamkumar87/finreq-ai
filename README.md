@@ -3,7 +3,7 @@
 An Agentic AI platform tailored for the **Financial Services, Banking & FinTech sector** that automates software requirements elicitation, statutory compliance analysis, quality auditing, and hybrid Software Development Life Cycle (SDLC) selection.
 
 ## Overview
-Gathering software requirements in banking and financial institutions is complex because financial transactions involve strict data protection constraints (PCI-DSS 4.0, RBI CSF), multi-jurisdiction compliance (GDPR, SOX 404, Basel III), diverse stakeholders (CISO, Head of Compliance, Enterprise Architect, CRO, Product Lead, Auditor), and zero-tolerance failure consequences. FinSpec AI coordinates specialized agents to transform unstructured financial scenarios or stakeholder documents into IEEE 830–aligned specifications and a justified, project-specific SDLC workflow.
+Gathering software requirements in banking and financial institutions is complex because financial transactions involve strict data protection constraints (PCI-DSS 4.0, RBI CSF), multi-jurisdiction compliance (GDPR, SOX 404, Basel III), diverse stakeholders (CISO, Head of Compliance, Enterprise Architect, CRO, Product Lead, Auditor), and zero-tolerance failure consequences. FinReq AI coordinates specialized agents to transform unstructured financial scenarios or stakeholder documents into IEEE 830–aligned specifications and a justified, project-specific SDLC workflow.
 
 ## Core Capabilities
 - **PCI / PII Privacy Guardrail:** Automatically detects and redacts sensitive cardholder data (PAN, CVV), bank accounts/IBANs, government IDs (Aadhaar, SSN), emails, phone numbers, and cloud API keys before inference, and blocks prompt-injection attempts.

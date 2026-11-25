@@ -1,4 +1,4 @@
-# System Architecture — FinSpec AI (Financial RE & SDLC Platform)
+# System Architecture — FinReq AI (Financial RE & SDLC Platform)
 
 **Domain:** Banking, FinTech & Capital Markets Software Engineering  
 **Standards:** IEEE 830 (SRS), ISO/IEC 25010, PCI-DSS v4.0, RBI Cyber Security Framework & DLG 2023, GDPR / Data Sovereignty, Basel III/IV (BCBS 239), SOX 404, ISO 20022  

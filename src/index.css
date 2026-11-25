@@ -1,6 +1,6 @@
 /* ==========================================================================
-   FINSPEC AI — FINANCIAL AGENTICS DESIGN SYSTEM
-   Emerald Jade + Charcoal Onyx Dark Theme | Strict Zero-Blue Accessible Palette
+   FINREQ AI — FINANCIAL DESIGN SYSTEM
+   Emerald Jade + Charcoal Onyx Dark Theme
    ========================================================================== */
 
 :root {
@@ -296,7 +296,7 @@ body {
   font-size: 0.86rem;
 }
 
-.info-banner.phi {
+.info-banner.privacy {
   background: var(--warning-bg);
   border: 1px solid rgba(245, 158, 11, 0.35);
   color: #fde68a;
@@ -363,7 +363,7 @@ body {
   font-size: 0.78rem;
 }
 
-/* Main Dual-Agent Grid */
+/* Main Grid */
 .agents-grid {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
@@ -458,7 +458,7 @@ body {
   border-color: rgba(16, 185, 129, 0.25);
 }
 
-/* Subtabs inside Agent 1 */
+/* Subtabs */
 .subtabs {
   display: flex;
   gap: 0.4rem;

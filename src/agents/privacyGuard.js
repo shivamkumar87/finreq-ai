@@ -1,10 +1,4 @@
-/**
- * Security, Privacy & Input Guardrail Agent for Financial Services
- * 1. Masks Primary Account Numbers (PAN), IBAN, Government IDs (SSN/Aadhaar/Tax ID),
- *    email, phone, and API secrets before any LLM or agent processes the text.
- * 2. Detects prompt-injection attempts.
- * 3. Validates that input represents a legitimate financial/banking software scenario.
- */
+// Sanitizes PCI/PII tokens and validates financial system inputs.
 
 export function maskSensitiveFinancialData(rawText) {
   if (!rawText || typeof rawText !== 'string') {
@@ -63,9 +57,6 @@ export function maskSensitiveFinancialData(rawText) {
   const totalRedacted = redactions.reduce((sum, r) => sum + r.count, 0);
   return { maskedText, redactions, totalRedacted };
 }
-
-// Backward-compatible alias for orchestrator
-export const maskSensitivePHI = maskSensitiveFinancialData;
 
 export function validateFinancialScenario(scenario) {
   if (!scenario || typeof scenario !== 'string') {
@@ -142,7 +133,4 @@ export function validateFinancialScenario(scenario) {
 
   return { isValid: true };
 }
-
-// Backward-compatible alias for orchestrator
-export const validateHospitalScenario = validateFinancialScenario;
 

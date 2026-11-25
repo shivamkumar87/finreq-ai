@@ -218,8 +218,8 @@ export default function App() {
     if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
     const md = generateSRSMarkdown({
       title: scenarioTitle,
-      scenarioText: pipelineResult.phiResult?.maskedText || scenarioInput,
-      phiResult: pipelineResult.phiResult,
+      scenarioText: pipelineResult.privacyResult?.maskedText || scenarioInput,
+      privacyResult: pipelineResult.privacyResult,
       requirementResult: pipelineResult.requirementResult,
       sdlcResult: pipelineResult.sdlcResult,
       approvalMap,
@@ -241,8 +241,8 @@ export default function App() {
     if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
     const md = generateSRSMarkdown({
       title: scenarioTitle,
-      scenarioText: pipelineResult.phiResult?.maskedText || scenarioInput,
-      phiResult: pipelineResult.phiResult,
+      scenarioText: pipelineResult.privacyResult?.maskedText || scenarioInput,
+      privacyResult: pipelineResult.privacyResult,
       requirementResult: pipelineResult.requirementResult,
       sdlcResult: pipelineResult.sdlcResult,
       approvalMap,
@@ -257,7 +257,7 @@ export default function App() {
   const reqData = pipelineResult?.requirementResult;
   const sdlcData = pipelineResult?.sdlcResult;
   const clarifications = pipelineResult?.clarifications || [];
-  const phiResult = pipelineResult?.phiResult;
+  const privacyResult = pipelineResult?.privacyResult;
   const logs = pipelineResult?.logs || [];
 
   const approvedCount = Object.values(approvalMap).filter((v) => v === 'Approved').length;
@@ -265,10 +265,10 @@ export default function App() {
 
   return (
     <div className="app-wrapper">
-      {/* HEADER */}
+      {/* Header */}
       <header className="app-header">
         <div className="header-badge">
-          <Sparkles size={14} /> FinSpec AI • Financial Multi-Agent RE &amp; SDLC Platform
+          <Sparkles size={14} /> FinReq AI • Financial Multi-Agent RE &amp; SDLC Platform
         </div>
         <h1>Financial Requirements Engineering &amp; SDLC Architect</h1>
         <p>
@@ -276,7 +276,7 @@ export default function App() {
         </p>
       </header>
 
-      {/* STAKEHOLDER ROLE & OPTIONAL LIVE GEMINI API CONFIG */}
+      {/* Configuration bar */}
       <section className="config-strip">
         <div className="config-group">
           <span className="config-label">
@@ -318,7 +318,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* INPUT & DOCUMENT INGESTION CARD */}
+      {/* Input and preset selector */}
       <section className="input-card">
         <div className="preset-tabs-header">
           <div className="tab-group">
@@ -419,19 +419,19 @@ export default function App() {
         </div>
       </section>
 
-      {/* PCI/PII REDACTION NOTICE */}
-      {phiResult && phiResult.totalRedacted > 0 && (
-        <div className="info-banner phi">
+      {/* PCI/PII redaction notice */}
+      {privacyResult && privacyResult.totalRedacted > 0 && (
+        <div className="info-banner privacy">
           <Shield size={20} style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
             <strong>PCI/PII Privacy Guardrail Active:</strong> Redacted{' '}
-            <strong>{phiResult.totalRedacted} sensitive financial/PII item(s)</strong> (
-            {phiResult.redactions.map((r) => `${r.count} ${r.type}`).join(', ')}) before running requirements analysis.
+            <strong>{privacyResult.totalRedacted} sensitive financial/PII item(s)</strong> (
+            {privacyResult.redactions.map((r) => `${r.count} ${r.type}`).join(', ')}) before running requirements analysis.
           </div>
         </div>
       )}
 
-      {/* VALIDATION / SECURITY ERROR BANNER */}
+      {/* Validation error */}
       {errorMessage && (
         <div className="info-banner error">
           <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -441,7 +441,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ADAPTIVE CLARIFICATION INTERVIEW PANEL */}
+      {/* Clarification interview panel */}
       {reqData && clarifications.length > 0 && (
         <section className="clarif-card">
           <div className="clarif-header">
@@ -492,10 +492,10 @@ export default function App() {
         </section>
       )}
 
-      {/* DUAL-AGENT MAIN OUTPUT GRID */}
+      {/* Main output grid */}
       {reqData && sdlcData && !pipelineResult?.failed && (
         <main className="agents-grid">
-          {/* LEFT PANEL: AGENT 1 — REQUIREMENTS, QUALITY/CONFLICTS, RAG & RTM */}
+          {/* Requirements and quality audit */}
           <article className="agent-panel agent-1">
             <header className="agent-panel-header">
               <span className="agent-meta-tag">Agent 1: Financial Requirements &amp; Compliance Engineer</span>
@@ -775,7 +775,7 @@ export default function App() {
             )}
           </article>
 
-          {/* RIGHT PANEL: AGENT 2 — MCDA SDLC SELECTION, LIVE SLIDERS & 5-PHASE WORKFLOW */}
+          {/* SDLC selection and tuning */}
           <article className="agent-panel agent-2">
             <header className="agent-panel-header">
               <span className="agent-meta-tag">Agent 2: Financial SDLC Architect (Hybrid MCDA)</span>
@@ -940,7 +940,7 @@ export default function App() {
         </main>
       )}
 
-      {/* LIVE MULTI-AGENT AUDIT & TELEMETRY TRAIL */}
+      {/* Audit trail */}
       {logs.length > 0 && (
         <section className="audit-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '0.95rem' }}>

@@ -1,13 +1,4 @@
-/**
- * Multi-Agent Financial RE & SDLC Orchestrator
- * Coordinates:
- * 1. Privacy & Security Guardrail (PCI/PII Masking + Prompt Injection Check)
- * 2. Financial RAG Knowledge Base Retrieval (PCI-DSS, RBI, GDPR, Basel III, SOX)
- * 3. Agent 1: Requirement Extraction, Classification & Quality/Conflict Audit
- * 4. Adaptive Clarification & Financial Interview Agent
- * 5. Agent 2: Hybrid MCDA + Deterministic SDLC Selection & Workflow Synthesis
- * 6. Full timestamped Audit Trail for Human-in-the-Loop governance
- */
+// Coordinates privacy redaction, requirement analysis, and SDLC model selection.
 
 import { maskSensitiveFinancialData, validateFinancialScenario } from './privacyGuard.js';
 import { RequirementAgent } from './requirementAgent.js';
@@ -42,22 +33,22 @@ export class AgentOrchestrator {
       });
     };
 
-    // Step 1: Privacy Guardrail — PCI/PII Masking before any LLM or agent sees the text
-    const phiResult = maskSensitiveFinancialData(rawScenarioText);
-    if (phiResult.totalRedacted > 0) {
-      const typesSummary = phiResult.redactions.map((r) => `${r.count}x ${r.type}`).join(', ');
+    // Redact sensitive PCI/PII tokens before processing
+    const privacyResult = maskSensitiveFinancialData(rawScenarioText);
+    if (privacyResult.totalRedacted > 0) {
+      const typesSummary = privacyResult.redactions.map((r) => `${r.count}x ${r.type}`).join(', ');
       addLog(
         'Privacy & Security Guard',
         'PCI/PII Redaction',
-        `Masked ${phiResult.totalRedacted} sensitive financial token(s) (${typesSummary}) before agent processing.`,
+        `Masked ${privacyResult.totalRedacted} sensitive financial token(s) (${typesSummary}) before agent processing.`,
         'warn'
       );
     } else {
       addLog('Privacy & Security Guard', 'PCI/PII Redaction', 'Scanned input for financial identifiers (PAN card, IBAN, email, phone, Gov ID, API secrets): 0 raw identifiers exposed.');
     }
 
-    // Step 2: Prompt Injection & Domain Validation
-    const validation = validateFinancialScenario(phiResult.maskedText);
+    // Validate scenario and guard against prompt injection
+    const validation = validateFinancialScenario(privacyResult.maskedText);
     if (!validation.isValid) {
       addLog('Coordinator Agent', 'Security & Validation Gate', validation.reason, 'error');
       const err = new Error(validation.reason);
@@ -70,8 +61,8 @@ export class AgentOrchestrator {
       `Validated financial specification${uploadedDocName ? ` (+ attached document: ${uploadedDocName})` : ''} for stakeholder role: ${stakeholderRole.toUpperCase()}.`
     );
 
-    // Step 3: Agent 1 — Financial RAG Retrieval + Requirement Extraction + Quality & Conflict Audit
-    const requirementResult = await this.requirementAgent.analyzeScenario(phiResult.maskedText, {
+    // Extract requirements and run quality checks
+    const requirementResult = await this.requirementAgent.analyzeScenario(privacyResult.maskedText, {
       stakeholderRole,
       clarificationAnswers,
       apiKey
@@ -100,8 +91,8 @@ export class AgentOrchestrator {
       requirementResult.qualityReport.conflicts.length > 0 ? 'warn' : 'ok'
     );
 
-    // Step 4: Adaptive Clarification Agent
-    const clarifications = this.clarificationAgent.generateClarifications(phiResult.maskedText, stakeholderRole);
+    // Prepare follow-up clarification prompts
+    const clarifications = this.clarificationAgent.generateClarifications(privacyResult.maskedText, stakeholderRole);
     const answeredCount = Object.keys(clarificationAnswers).length;
     addLog(
       'Clarification Interview Agent',
@@ -109,7 +100,7 @@ export class AgentOrchestrator {
       `Prepared ${clarifications.length} financial clarification prompt(s) (${answeredCount} answered by stakeholder).`
     );
 
-    // Step 5: Agent 2 — Hybrid MCDA + Deterministic SDLC Engine
+    // Evaluate SDLC recommendations
     const sdlcResult = this.sdlcAgent.evaluateSDLC(requirementResult, customFactors, clarificationAnswers);
     addLog(
       'SDLC Selection Agent',
@@ -124,7 +115,7 @@ export class AgentOrchestrator {
     );
 
     return {
-      phiResult,
+      privacyResult,
       requirementResult,
       sdlcResult,
       clarifications,

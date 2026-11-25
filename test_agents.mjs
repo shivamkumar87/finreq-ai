@@ -1,8 +1,3 @@
-/**
- * Automated Verification & Evaluation Test Suite for FinSpec AI (Financial RE & SDLC)
- * Run with: node test_agents.mjs
- */
-
 import assert from 'node:assert/strict';
 import { AgentOrchestrator } from './src/agents/orchestrator.js';
 import { FINANCIAL_PRESETS, FINANCIAL_SDLC_EXAMPLES } from './src/agents/presets.js';
@@ -25,11 +20,11 @@ async function test(name, fn) {
 await test('1. PCI/PII Masking redacts Credit Card PAN, Account, Phone, and Gov ID before inference', async () => {
   const input = 'Core banking module for card PAN 4532 1123 4567 8901, account ACC-9876543210, contact ciso@megabank.com or 9876543210, SSN 123-45-6789, requiring sub-50ms payment switch latency.';
   const res = await orchestrator.runPipeline(input, { stakeholderRole: 'ciso' });
-  assert.ok(res.phiResult.totalRedacted >= 4, `Expected at least 4 redactions but got ${res.phiResult.totalRedacted}`);
-  assert.ok(res.phiResult.maskedText.includes('[REDACTED_PCI_PAN]'));
-  assert.ok(res.phiResult.maskedText.includes('[REDACTED_PII_EMAIL]'));
-  assert.ok(res.phiResult.maskedText.includes('[REDACTED_PII_PHONE]'));
-  assert.ok(res.phiResult.maskedText.includes('[REDACTED_GOV_ID]'));
+  assert.ok(res.privacyResult.totalRedacted >= 4, `Expected at least 4 redactions but got ${res.privacyResult.totalRedacted}`);
+  assert.ok(res.privacyResult.maskedText.includes('[REDACTED_PCI_PAN]'));
+  assert.ok(res.privacyResult.maskedText.includes('[REDACTED_PII_EMAIL]'));
+  assert.ok(res.privacyResult.maskedText.includes('[REDACTED_PII_PHONE]'));
+  assert.ok(res.privacyResult.maskedText.includes('[REDACTED_GOV_ID]'));
 });
 
 await test('2. Security Guardrail blocks prompt-injection attempts', async () => {
@@ -82,8 +77,8 @@ await test('6. IEEE 830 Financial SRS Exporter outputs complete Markdown with HI
   const res = await orchestrator.runPipeline(preset.scenarioDescription, { stakeholderRole: preset.defaultRole });
   const md = generateSRSMarkdown({
     title: preset.title,
-    scenarioText: res.phiResult.maskedText,
-    phiResult: res.phiResult,
+    scenarioText: res.privacyResult.maskedText,
+    privacyResult: res.privacyResult,
     requirementResult: res.requirementResult,
     sdlcResult: res.sdlcResult,
     approvalMap: { 'FR-FIN-01': 'Approved' },
