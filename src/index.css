@@ -260,6 +260,49 @@
   --text-muted: #7a7a70;
 }
 
+[data-theme="sky-blue"] {
+  color-scheme: light;
+  --bg-page: #E9F1FA;
+  --bg-panel: #FFFFFF;
+  --bg-subtle: #F2F7FD;
+  --bg-input: #F8FBFF;
+  --bg-hover: #DCE9F7;
+  --panel-shadow: 0 1px 3px rgba(15, 45, 85, 0.06);
+
+  --border: #CFE0F3;
+  --border-strong: #ACC8E8;
+
+  --accent: #00ABE4;
+  --accent-muted: #008EC0;
+  --accent-text: #00749E;
+  --accent-tint: rgba(0, 171, 228, 0.11);
+  --accent-border: rgba(0, 171, 228, 0.45);
+
+  --btn-primary-bg: #00ABE4;
+  --btn-primary-hover: #0092C5;
+  --btn-primary-text: #FFFFFF;
+
+  --approved: #15803d;
+  --approved-text: #166534;
+  --approved-tint: rgba(21, 128, 61, 0.09);
+  --approved-border: rgba(21, 128, 61, 0.35);
+
+  --warn: #b45309;
+  --warn-text: #92400e;
+  --warn-tint: rgba(217, 119, 6, 0.1);
+  --warn-border: rgba(180, 83, 9, 0.35);
+
+  --danger: #be123c;
+  --danger-text: #9f1239;
+  --danger-tint: rgba(225, 29, 72, 0.08);
+  --danger-border: rgba(190, 18, 60, 0.35);
+
+  --text: #0F243E;
+  --text-body: #233B59;
+  --text-secondary: #476385;
+  --text-muted: #6E87A6;
+}
+
 /* Font pairings */
 [data-font="editorial-serif"] {
   --font-heading: 'Source Serif 4', Georgia, serif;

@@ -39,12 +39,13 @@ const FACTOR_LABELS = [
 ];
 
 const THEME_OPTIONS = [
-  { id: 'warm-sand', label: '1. Warm Sand & Terracotta' },
-  { id: 'ivory-olive', label: '2. Ivory & Deep Olive' },
-  { id: 'parchment-amber', label: '3. Parchment & Ochre' },
-  { id: 'linen-burgundy', label: '4. Linen & Bordeaux' },
-  { id: 'oatmeal-espresso', label: '5. Oatmeal & Espresso' },
-  { id: 'sandstone-teal', label: '6. Sandstone & Warm Teal' }
+  { id: 'sky-blue', label: '1. Light Blue & Bright Blue' },
+  { id: 'warm-sand', label: '2. Warm Sand & Terracotta' },
+  { id: 'ivory-olive', label: '3. Ivory & Deep Olive' },
+  { id: 'parchment-amber', label: '4. Parchment & Ochre' },
+  { id: 'linen-burgundy', label: '5. Linen & Bordeaux' },
+  { id: 'oatmeal-espresso', label: '6. Oatmeal & Espresso' },
+  { id: 'sandstone-teal', label: '7. Sandstone & Warm Teal' }
 ];
 
 const FONT_OPTIONS = [
@@ -222,10 +223,10 @@ export default function App() {
 
   const [theme, setTheme] = useState(() => {
     try {
-      const saved = window.localStorage.getItem('finreq_theme');
-      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'warm-sand';
+      const saved = window.localStorage.getItem('finreq_theme_v2');
+      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'sky-blue';
     } catch {
-      return 'warm-sand';
+      return 'sky-blue';
     }
   });
 
@@ -296,7 +297,7 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     document.documentElement.dataset.font = fontPair;
     try {
-      window.localStorage.setItem('finreq_theme', theme);
+      window.localStorage.setItem('finreq_theme_v2', theme);
       window.localStorage.setItem('finreq_font', fontPair);
     } catch {
       // Ignore storage errors in restricted contexts
