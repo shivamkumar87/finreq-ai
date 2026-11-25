@@ -18,35 +18,23 @@ Software teams in banking and fintech have to reconcile fast product delivery wi
 ## Processing Flow
 
 ```mermaid
-flowchart LR
-    Input["Input\nScenario or File\n+ Role & API Key"]
-    Guard["1. Privacy Guard\nRedacts PAN, IBAN,\nGov ID, Keys, PII\nBlocks Injections"]
-    RAG["2. Financial RAG\nScores 8 Standards\nReturns Top 5\nCited Clauses"]
+%%{init: {'flowchart': {'rankSpacing': 60, 'nodeSpacing': 50, 'padding': 22, 'curve': 'basis'}}}%%
+flowchart TD
+    Input["User Input\nScenario Text or Policy File + Stakeholder Role"]
+    Guard["1. Privacy & Security Guardrail\nMasks PAN, IBAN, Gov ID, Keys, PII | Blocks Injections"]
+    RAG["2. Financial Regulatory RAG\nMatches 8 Standards | Returns Top 5 Cited Clauses"]
+    Req["3. Requirements & Quality Engineer\nGenerates FRs & NFRs | Audits Ambiguities, Risks & RTM"]
+    Clarify["4. Adaptive Clarification\nSurfaces Unstated TPS, RTO/RPO, Rail & Cadence Gaps"]
+    SDLC["5. SDLC Architect\n8-Factor MCDA + 6 Rules | Ranks 6 Models & 5 Phases"]
+    HITL["6. Human Review & Export\nApprove/Flag, Live Sliders, Sign-Off & Markdown SRS"]
 
-    subgraph ReqStage["3. Requirements & Audit"]
-        direction TB
-        Gen["FR / NFR Synthesis\nLocal Engine or Gemini"]
-        Audit["IEEE 830 Audit\nAmbiguities, Conflicts,\nRisk Register & RTM"]
-        Gen --> Audit
-    end
-
-    Clarify["4. Clarification\nDetects TPS, RTO/RPO,\nRail & Cadence Gaps"]
-
-    subgraph SDLCStage["5. SDLC Architect"]
-        direction TB
-        MCDA["8-Factor MCDA\n+ 6 Override Rules"]
-        WF["6 Ranked Models\n+ 5-Phase Workflow"]
-        MCDA --> WF
-    end
-
-    HITL["6. Review & Export\nApprove / Flag, Sliders,\nSDLC Sign-Off &\nMarkdown SRS"]
-
-    Input --> Guard --> RAG --> ReqStage
-    ReqStage --> Clarify
-    ReqStage --> SDLCStage
-    Clarify -->|"Answers refine re-run"| ReqStage
-    Clarify -->|"Adjust factors"| SDLCStage
-    SDLCStage --> HITL
+    Input --> Guard
+    Guard --> RAG
+    RAG --> Req
+    Req --> Clarify
+    Clarify --> SDLC
+    Clarify -.->|"Re-run with answers"| Req
+    SDLC --> HITL
 ```
 
 ---

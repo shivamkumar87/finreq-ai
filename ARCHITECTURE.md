@@ -12,40 +12,42 @@ Technical architecture, data flows, scoring formulas, and module responsibilitie
 Every analysis runs through `AgentOrchestrator.runPipeline(rawScenarioText, options)` in `src/agents/orchestrator.js`:
 
 ```mermaid
-flowchart LR
-    UI["React UI\nsrc/App.jsx"]
-    Orch["AgentOrchestrator\nrunPipeline"]
+%%{init: {'flowchart': {'rankSpacing': 60, 'nodeSpacing': 50, 'padding': 20, 'curve': 'basis'}}}%%
+flowchart TD
+    UI["React UI (src/App.jsx)\nScenario Input, Role & Optional API Key"]
+    Orch["AgentOrchestrator.runPipeline()\nsrc/agents/orchestrator.js"]
 
-    subgraph S1["Stage 1: Privacy Guard"]
+    subgraph S1["Stage 1: Privacy & Validation — privacyGuard.js"]
         direction TB
-        Mask["maskSensitiveFinancialData\nPAN, IBAN, Gov ID, Keys, PII"]
-        Val["validateFinancialScenario\nLength, Injections, Domain"]
+        Mask["maskSensitiveFinancialData()\nPAN, IBAN, Gov ID, Secrets, Email, Phone"]
+        Val["validateFinancialScenario()\nLength, Injection, Profanity & Domain Checks"]
         Mask --> Val
     end
 
-    Err["Throw Error\n+ Partial Logs"]
-    RAG["Stage 2: Financial RAG\nretrieveFinancialContext\nTop 5 of 8 Clauses"]
+    Err["Throw Error + Partial Audit Logs"]
+    RAG["Stage 2: Regulatory Retrieval — knowledgeBase.js\nScores 8 Standards -> Top 5 Clauses"]
+    Mode{"Gemini API Key\nProvided?"}
 
-    subgraph S3["Stage 3: RequirementAgent"]
+    subgraph S3["Stage 3: Requirement Extraction & Audit — requirementAgent.js"]
         direction TB
-        Mode{"API Key\n> 10 chars?"}
-        LLM["_callGeminiLLM\ngemini-2.5-flash"]
-        Local["_generateLocalRAGRequirements\n4 FRs + 4 NFRs"]
-        Audit["auditRequirementQuality\nQuality, Conflicts, Risk, RTM"]
-        Mode -->|Yes| LLM
-        Mode -->|No| Local
-        LLM -->|Error fallback| Local
+        LLM["_callGeminiLLM()\ngemini-2.5-flash (JSON, Grounded)"]
+        Local["_generateLocalRAGRequirements()\nDomain Templates (4 FRs + 4 NFRs)"]
+        Audit["auditRequirementQuality()\nAmbiguities, Conflicts, Risk Register & RTM"]
         LLM --> Audit
         Local --> Audit
     end
 
-    Clarify["Stage 4: Clarification\ngenerateClarifications\nTPS, Regime, DR, Rails"]
-    SDLC["Stage 5: SDLC Architect\nevaluateSDLC\n8 Factors, 6 Rules, 5 Phases"]
-    Out["Return Result Bundle\nto UI & SRS Exporter"]
+    Clarify["Stage 4: Adaptive Clarification (clarificationAgent.js)\nTPS, Regime, RTO/RPO, Payment Rails, Cadence"]
+    SDLC["Stage 5: SDLC Architect (sdlcAgent.js)\n8 Factors, Weighted MCDA, 6 Rules, 5-Phase Workflow"]
+    Out["Result Bundle -> UI Workspace & SRS Exporter"]
 
-    UI --> Orch --> S1
-    Val -->|Invalid| Err
-    Val -->|Valid| RAG --> S3 --> Clarify --> SDLC --> Out
+    UI --> Orch --> Mask
+    Val -->|"Invalid"| Err
+    Val -->|"Valid"| RAG --> Mode
+    Mode -->|"Yes"| LLM
+    Mode -->|"No"| Local
+    LLM -.->|"Error Fallback"| Local
+    Audit --> Clarify --> SDLC --> Out
 ```
 
 ---
@@ -55,17 +57,21 @@ flowchart LR
 Once the initial pipeline completes, three client-side loops run without requiring a backend:
 
 ```mermaid
-flowchart LR
-    State["Current Pipeline Result"]
-    ClarifLoop["Clarification Answers\nRe-runs full orchestrator pipeline\nUpdates NFRs, RAG matches & MCDA factors"]
-    SliderLoop["Interactive Factor Sliders\nSets _fromSlider = true\nCalls liveSdlcAgent.evaluateSDLC() directly\nRe-ranks 6 SDLC models immediately"]
-    HITLLoop["HITL Governance\nApprove/Flag per FR & NFR\nSDLC Sign-off + Reviewer Name\nAppends events to audit trail"]
-    Export["SRS Exporter (srsExporter.js)\nCompiles Markdown SRS + RTM + Audit Log"]
+%%{init: {'flowchart': {'rankSpacing': 55, 'nodeSpacing': 45, 'padding': 20, 'curve': 'basis'}}}%%
+flowchart TD
+    State["Pipeline Result State"]
 
-    State --> ClarifLoop --> State
-    State --> SliderLoop --> State
-    State --> HITLLoop --> State
-    State --> Export
+    Clarif["Clarification Answers\nRe-runs orchestrator pipeline"]
+    Sliders["Interactive Factor Sliders\nRuns SdlcAgent.evaluateSDLC live"]
+    HITL["HITL Review & Sign-Off\nAppends events to audit log"]
+
+    Updated["Updated Requirements, SDLC Ranking & Audit Trail"]
+    Export["SRS Exporter (srsExporter.js)\nGenerates IEEE 830 Markdown"]
+
+    State --> Clarif --> Updated
+    State --> Sliders --> Updated
+    State --> HITL --> Updated
+    Updated --> Export
 ```
 
 ---
