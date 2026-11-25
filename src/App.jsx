@@ -36,6 +36,13 @@ const FACTOR_LABELS = [
   { key: 'formalVerificationNeed', label: 'Formal Verification & Audit' }
 ];
 
+const THEME_OPTIONS = [
+  { id: 'light-cobalt', label: 'Light & Cobalt' },
+  { id: 'warm-pine', label: 'Warm Paper & Pine' },
+  { id: 'dark-graphite', label: 'Dark Graphite & Blue' },
+  { id: 'dark-copper', label: 'Dark Charcoal & Copper' }
+];
+
 function RequirementRow({ item, kind, status, isExpanded, onToggleExpand, onDecision }) {
   const rowClass = status === 'Approved'
     ? 'approved'
@@ -156,6 +163,15 @@ export default function App() {
   const [expandedPhaseNumbers, setExpandedPhaseNumbers] = useState({});
   const [clarifOpen, setClarifOpen] = useState(false);
 
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem('finreq_theme');
+      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'light-cobalt';
+    } catch {
+      return 'light-cobalt';
+    }
+  });
+
   const [pipelineResult, setPipelineResult] = useState(null);
   const [baselineFactors, setBaselineFactors] = useState(null);
   const [isManuallyTuned, setIsManuallyTuned] = useState(false);
@@ -209,6 +225,15 @@ export default function App() {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      window.localStorage.setItem('finreq_theme', theme);
+    } catch {
+      // Ignore storage errors in restricted contexts
+    }
+  }, [theme]);
 
   useEffect(() => {
     executePipeline({
@@ -453,10 +478,10 @@ export default function App() {
             fill="none"
             aria-hidden="true"
           >
-            <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7" fill="#13161b" stroke="#252a33" strokeWidth="1.5" />
-            <path d="M16 5L7.5 9.2V16.8C7.5 21.9 11.1 26.5 16 27.8C20.9 26.5 24.5 21.9 24.5 16.8V9.2L16 5Z" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M16 10.8V21.2" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M12.5 13.8H17.8C18.9 13.8 19.8 14.6 19.8 15.6C19.8 16.6 18.9 17.4 17.8 17.4H14.2C13.1 17.4 12.2 18.2 12.2 19.2C12.2 20.2 13.1 21 14.2 21H19.5" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7" fill="var(--bg-subtle)" stroke="var(--border-strong)" strokeWidth="1.5" />
+            <path d="M16 5L7.5 9.2V16.8C7.5 21.9 11.1 26.5 16 27.8C20.9 26.5 24.5 21.9 24.5 16.8V9.2L16 5Z" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M16 10.8V21.2" stroke="var(--accent-text)" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M12.5 13.8H17.8C18.9 13.8 19.8 14.6 19.8 15.6C19.8 16.6 18.9 17.4 17.8 17.4H14.2C13.1 17.4 12.2 18.2 12.2 19.2C12.2 20.2 13.1 21 14.2 21H19.5" stroke="var(--accent-text)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div className="brand-text">
             <span className="brand-name">FinReq AI</span>
@@ -465,6 +490,20 @@ export default function App() {
         </div>
 
         <div className="toolbar-group">
+          <label className="field-label" htmlFor="theme-select">Theme</label>
+          <select
+            id="theme-select"
+            className="select-ctrl"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+          >
+            {THEME_OPTIONS.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+
           <label className="field-label" htmlFor="role-select">Role</label>
           <select
             id="role-select"
@@ -588,7 +627,7 @@ export default function App() {
                   <Download size={13} /> Export SRS (.md)
                 </button>
                 <button type="button" className="btn" onClick={handleCopySummary}>
-                  {copied ? <Check size={13} color="var(--accent)" /> : <Copy size={13} />}
+                  {copied ? <Check size={13} color="var(--approved)" /> : <Copy size={13} />}
                   {copied ? 'Copied' : 'Copy SRS'}
                 </button>
               </>
@@ -985,7 +1024,10 @@ export default function App() {
                     <Flag size={12} /> Request Revision
                   </button>
                   {sdlcSignOff && (
-                    <span className="meta-note" style={{ color: 'var(--accent-text)' }}>
+                    <span
+                      className="meta-note"
+                      style={{ color: sdlcSignOff.status === 'Approved' ? 'var(--approved-text)' : 'var(--warn-text)' }}
+                    >
                       {sdlcSignOff.status} ({sdlcSignOff.timestamp})
                     </span>
                   )}
@@ -1027,7 +1069,7 @@ export default function App() {
                           <p className="spec-statement">{model.rationale}</p>
                           <div className="tradeoff-grid">
                             <div>
-                              <strong style={{ color: 'var(--accent-text)' }}>Strengths</strong>
+                              <strong style={{ color: 'var(--approved-text)' }}>Strengths</strong>
                               <ul>
                                 {model.pros.map((p, i) => <li key={i}>{p}</li>)}
                               </ul>
