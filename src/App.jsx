@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Sparkles,
   ArrowRight,
   Download,
   Copy,
@@ -18,7 +17,13 @@ import {
   FileText,
   RefreshCw,
   CheckCircle,
-  Flag
+  Flag,
+  Loader2,
+  BookOpen,
+  GitBranch,
+  ClipboardCheck,
+  RotateCcw,
+  Layers
 } from 'lucide-react';
 import { AgentOrchestrator } from './agents/orchestrator.js';
 import { SdlcAgent } from './agents/sdlcAgent.js';
@@ -40,31 +45,151 @@ const FACTOR_LABELS = [
   { key: 'formalVerificationNeed', label: 'Formal Verification & Audit' }
 ];
 
+function RequirementCard({ item, kind, status, isExpanded, onToggleExpand, onDecision }) {
+  const cardClass = status === 'Approved'
+    ? 'approved'
+    : status === 'Flagged for Revision'
+      ? 'flagged'
+      : '';
+
+  const hasExtraDetails = Boolean(
+    item.userStory ||
+    item.businessJustification ||
+    item.applicableRegulations?.length ||
+    (item.acceptanceCriteria?.length || 0) > 2
+  );
+
+  return (
+    <div className={`req-card ${cardClass}`}>
+      <div className="req-top">
+        <span className="req-id">{item.id}</span>
+        <div className="badge-row" style={{ marginTop: 0 }}>
+          <span className="mini-badge">{kind === 'fr' ? item.priority : item.category}</span>
+          {item.riskLevel && <span className="mini-badge">{item.riskLevel} Risk</span>}
+          <span className="mini-badge good">
+            {Math.round((item.confidence || (kind === 'fr' ? 0.92 : 0.94)) * 100)}% conf
+          </span>
+        </div>
+      </div>
+
+      <div className="req-title">{item.title}</div>
+      <p className="req-desc">{item.statement}</p>
+
+      {item.targetMetrics && (
+        <div style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: 'var(--accent-light)' }}>
+          <strong>Target SLA:</strong> {item.targetMetrics}
+        </div>
+      )}
+
+      <div className="badge-row">
+        {(item.citations || []).map((c) => (
+          <span key={c} className="mini-badge cite">{c}</span>
+        ))}
+        {(item.multiLabels || []).map((lbl) => (
+          <span key={lbl} className="mini-badge">{lbl}</span>
+        ))}
+      </div>
+
+      {item.acceptanceCriteria?.length > 0 && (
+        <div className="req-ac">
+          <strong>Acceptance Criteria:</strong>
+          <ul>
+            {(isExpanded ? item.acceptanceCriteria : item.acceptanceCriteria.slice(0, 2)).map((ac, i) => (
+              <li key={i}>{ac}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isExpanded && (
+        <div className="detail-block">
+          {item.sourceStakeholder && (
+            <div><strong>Source Stakeholder:</strong> {item.sourceStakeholder}</div>
+          )}
+          {item.userStory && (
+            <div><strong>User Story:</strong> <em>{item.userStory}</em></div>
+          )}
+          {item.businessJustification && (
+            <div><strong>Business Justification:</strong> {item.businessJustification}</div>
+          )}
+          {item.applicableRegulations?.length > 0 && (
+            <div><strong>Applicable Regulations:</strong> {item.applicableRegulations.join(', ')}</div>
+          )}
+        </div>
+      )}
+
+      <div className="hitl-bar">
+        <div className="config-group">
+          <span style={{ fontSize: '0.73rem', color: 'var(--text-dim)' }}>
+            Status: <strong>{status || 'Pending Review'}</strong>
+          </span>
+          {hasExtraDetails && (
+            <button type="button" className="inline-link-btn" onClick={onToggleExpand}>
+              {isExpanded ? <><ChevronUp size={13} /> Less</> : <><ChevronDown size={13} /> Details</>}
+            </button>
+          )}
+        </div>
+
+        <div className="config-group">
+          <button
+            type="button"
+            className={`hitl-btn approve ${status === 'Approved' ? 'active' : ''}`}
+            onClick={() => onDecision(item.id, 'Approved')}
+          >
+            <CheckCircle size={12} /> Approve
+          </button>
+          <button
+            type="button"
+            className={`hitl-btn flag ${status === 'Flagged for Revision' ? 'active' : ''}`}
+            onClick={() => onDecision(item.id, 'Flagged for Revision')}
+          >
+            <Flag size={12} /> Flag
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const initialPreset = FINANCIAL_PRESETS[0];
 
   const [scenarioInput, setScenarioInput] = useState(initialPreset.scenarioDescription);
   const [scenarioTitle, setScenarioTitle] = useState(initialPreset.title);
+  const [activePresetKey, setActivePresetKey] = useState(initialPreset.id);
   const [stakeholderRole, setStakeholderRole] = useState(initialPreset.defaultRole || 'ciso');
   const [apiKey, setApiKey] = useState('');
   const [showApiConfig, setShowApiConfig] = useState(false);
   const [uploadedDocName, setUploadedDocName] = useState('');
 
-  const [presetTab, setPresetTab] = useState('financial'); // 'financial' | 'rules'
-  const [agent1Tab, setAgent1Tab] = useState('reqs'); // 'reqs' | 'quality' | 'rtm'
+  const [presetTab, setPresetTab] = useState('financial');
+  const [agent1Tab, setAgent1Tab] = useState('reqs');
+  const [reqFilter, setReqFilter] = useState('all');
+  const [expandedReqIds, setExpandedReqIds] = useState({});
   const [expandedModelId, setExpandedModelId] = useState(null);
+  const [expandedPhaseNumbers, setExpandedPhaseNumbers] = useState({});
 
   const [pipelineResult, setPipelineResult] = useState(null);
+  const [baselineFactors, setBaselineFactors] = useState(null);
+  const [isManuallyTuned, setIsManuallyTuned] = useState(false);
+
   const [clarificationAnswers, setClarificationAnswers] = useState({});
   const [approvalMap, setApprovalMap] = useState({});
   const [reviewerName, setReviewerName] = useState('A. Mehta (CISO / Risk Lead)');
   const [sdlcSignOff, setSdlcSignOff] = useState(null);
+
+  const [auditFilter, setAuditFilter] = useState('all');
+  const [auditCollapsed, setAuditCollapsed] = useState(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const fileInputRef = useRef(null);
+  const privacyRef = useRef(null);
+  const clarifRef = useRef(null);
+  const agent1Ref = useRef(null);
+  const agent2Ref = useRef(null);
 
   const executePipeline = async ({
     text = scenarioInput,
@@ -86,8 +211,13 @@ export default function App() {
         uploadedDocName: docName
       });
       setPipelineResult(result);
+      setBaselineFactors(result.sdlcResult?.evaluatedFactors || null);
+      setIsManuallyTuned(false);
       setScenarioTitle(title);
       setApprovalMap({});
+      setExpandedReqIds({});
+      setExpandedPhaseNumbers({});
+      setReqFilter('all');
       setSdlcSignOff(null);
     } catch (err) {
       setErrorMessage(err.message || 'Unable to process this financial scenario.');
@@ -97,7 +227,6 @@ export default function App() {
     }
   };
 
-  // Run initial Core Banking Gateway case study on first load
   useEffect(() => {
     executePipeline({
       text: initialPreset.scenarioDescription,
@@ -111,6 +240,7 @@ export default function App() {
   const handleSelectFinancialPreset = (preset) => {
     setScenarioInput(preset.scenarioDescription);
     setStakeholderRole(preset.defaultRole || 'ciso');
+    setActivePresetKey(preset.id);
     setClarificationAnswers({});
     setUploadedDocName('');
     executePipeline({
@@ -122,8 +252,9 @@ export default function App() {
     });
   };
 
-  const handleSelectRuleExample = (spec) => {
+  const handleSelectRuleExample = (spec, idx) => {
     setScenarioInput(spec.scenario);
+    setActivePresetKey(`rule-${idx}`);
     setClarificationAnswers({});
     setUploadedDocName('');
     executePipeline({
@@ -145,6 +276,7 @@ export default function App() {
         const merged = `${scenarioInput.trim()}\n\n[Uploaded Document: ${file.name}]\n${content.slice(0, 3000)}`;
         setScenarioInput(merged);
         setUploadedDocName(file.name);
+        setActivePresetKey('');
       }
     };
     reader.readAsText(file);
@@ -167,6 +299,22 @@ export default function App() {
       ...prev,
       sdlcResult: updatedSdlc
     }));
+    setIsManuallyTuned(true);
+    setSdlcSignOff(null);
+  };
+
+  const handleResetSliders = () => {
+    if (!pipelineResult?.requirementResult || !baselineFactors) return;
+    const restoredSdlc = liveSdlcAgent.evaluateSDLC(
+      pipelineResult.requirementResult,
+      baselineFactors,
+      clarificationAnswers
+    );
+    setPipelineResult((prev) => ({
+      ...prev,
+      sdlcResult: restoredSdlc
+    }));
+    setIsManuallyTuned(false);
     setSdlcSignOff(null);
   };
 
@@ -175,7 +323,7 @@ export default function App() {
     setPipelineResult((prev) => {
       if (!prev) return prev;
       const newLog = {
-        id: `hitl-${Date.now()}`,
+        id: `hitl-${Date.now()}-${reqId}`,
         timestamp: new Date().toLocaleTimeString(),
         agent: 'Human-in-the-Loop Gate',
         phase: 'Requirement Review',
@@ -183,6 +331,40 @@ export default function App() {
         status: status === 'Flagged for Revision' ? 'warn' : 'ok'
       };
       return { ...prev, logs: [...(prev.logs || []), newLog] };
+    });
+  };
+
+  const handleApproveRemaining = () => {
+    const reqs = pipelineResult?.requirementResult;
+    if (!reqs) return;
+    const allReqs = [...reqs.functionalRequirements, ...reqs.nonFunctionalRequirements];
+    const pendingIds = allReqs.filter((r) => !approvalMap[r.id]).map((r) => r.id);
+    if (pendingIds.length === 0) return;
+
+    setApprovalMap((prev) => {
+      const next = { ...prev };
+      pendingIds.forEach((id) => {
+        next[id] = 'Approved';
+      });
+      return next;
+    });
+
+    setPipelineResult((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        logs: [
+          ...(prev.logs || []),
+          {
+            id: `hitl-batch-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            agent: 'Human-in-the-Loop Gate',
+            phase: 'Batch Approval',
+            message: `${reviewerName || 'Reviewer'} approved ${pendingIds.length} remaining requirement(s): ${pendingIds.join(', ')}.`,
+            status: 'ok'
+          }
+        ]
+      };
     });
   };
 
@@ -214,9 +396,8 @@ export default function App() {
     });
   };
 
-  const handleExportSRS = () => {
-    if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
-    const md = generateSRSMarkdown({
+  const buildCurrentMarkdown = () =>
+    generateSRSMarkdown({
       title: scenarioTitle,
       scenarioText: pipelineResult.privacyResult?.maskedText || scenarioInput,
       privacyResult: pipelineResult.privacyResult,
@@ -226,6 +407,10 @@ export default function App() {
       sdlcSignOff,
       auditLogs: pipelineResult.logs || []
     });
+
+  const handleExportSRS = () => {
+    if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
+    const md = buildCurrentMarkdown();
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -239,19 +424,13 @@ export default function App() {
 
   const handleCopySummary = () => {
     if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
-    const md = generateSRSMarkdown({
-      title: scenarioTitle,
-      scenarioText: pipelineResult.privacyResult?.maskedText || scenarioInput,
-      privacyResult: pipelineResult.privacyResult,
-      requirementResult: pipelineResult.requirementResult,
-      sdlcResult: pipelineResult.sdlcResult,
-      approvalMap,
-      sdlcSignOff,
-      auditLogs: pipelineResult.logs || []
-    });
-    navigator.clipboard.writeText(md);
+    navigator.clipboard.writeText(buildCurrentMarkdown());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const scrollToRef = (ref) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const reqData = pipelineResult?.requirementResult;
@@ -260,23 +439,43 @@ export default function App() {
   const privacyResult = pipelineResult?.privacyResult;
   const logs = pipelineResult?.logs || [];
 
+  const frList = reqData?.functionalRequirements || [];
+  const nfrList = reqData?.nonFunctionalRequirements || [];
+  const totalReqs = frList.length + nfrList.length;
+
   const approvedCount = Object.values(approvalMap).filter((v) => v === 'Approved').length;
-  const totalReqs = (reqData?.functionalRequirements?.length || 0) + (reqData?.nonFunctionalRequirements?.length || 0);
+  const flaggedCount = Object.values(approvalMap).filter((v) => v === 'Flagged for Revision').length;
+  const pendingCount = Math.max(0, totalReqs - approvedCount - flaggedCount);
+
+  const answeredClarifCount = clarifications.filter((q) => Boolean(clarificationAnswers[q.id])).length;
+
+  const matchesReqFilter = (id) => {
+    const status = approvalMap[id];
+    if (reqFilter === 'approved') return status === 'Approved';
+    if (reqFilter === 'flagged') return status === 'Flagged for Revision';
+    if (reqFilter === 'pending') return !status;
+    return true;
+  };
+
+  const filteredFRs = frList.filter((r) => matchesReqFilter(r.id));
+  const filteredNFRs = nfrList.filter((r) => matchesReqFilter(r.id));
+
+  const visibleLogs = auditFilter === 'issues'
+    ? logs.filter((l) => l.status === 'warn' || l.status === 'error')
+    : logs;
 
   return (
     <div className="app-wrapper">
-      {/* Header */}
       <header className="app-header">
         <div className="header-badge">
-          <Sparkles size={14} /> FinReq AI • Financial Multi-Agent RE &amp; SDLC Platform
+          <Layers size={14} /> FinReq AI / Financial RE &amp; SDLC Platform
         </div>
         <h1>Financial Requirements Engineering &amp; SDLC Architect</h1>
         <p>
-          Agentic AI platform for <strong>Financial Services &amp; Banking Systems</strong> combining PCI/PII Privacy Guardrails, Financial Regulatory RAG (PCI-DSS 4.0 / RBI CSF / Basel III / SOX 404 / ISO 20022), Adaptive Clarification, Hybrid MCDA SDLC Selection, and Human-in-the-Loop Governance.
+          Multi-stage analysis for <strong>Financial Services &amp; Banking Systems</strong>: PCI/PII redaction, regulatory mapping (PCI-DSS 4.0, RBI CSF, Basel III, SOX 404, ISO 20022), gap clarification, MCDA SDLC selection, and review sign-off.
         </p>
       </header>
 
-      {/* Configuration bar */}
       <section className="config-strip">
         <div className="config-group">
           <span className="config-label">
@@ -318,7 +517,6 @@ export default function App() {
         </div>
       </section>
 
-      {/* Input and preset selector */}
       <section className="input-card">
         <div className="preset-tabs-header">
           <div className="tab-group">
@@ -327,14 +525,14 @@ export default function App() {
               className={`preset-tab-btn ${presetTab === 'financial' ? 'active' : ''}`}
               onClick={() => setPresetTab('financial')}
             >
-              Financial Case Studies (5)
+              Financial Case Studies ({FINANCIAL_PRESETS.length})
             </button>
             <button
               type="button"
               className={`preset-tab-btn ${presetTab === 'rules' ? 'active' : ''}`}
               onClick={() => setPresetTab('rules')}
             >
-              Financial SDLC Rule Profiles (6)
+              SDLC Rule Profiles ({FINANCIAL_SDLC_EXAMPLES.length})
             </button>
           </div>
 
@@ -362,7 +560,7 @@ export default function App() {
                 <button
                   type="button"
                   key={preset.id}
-                  className="sample-pill-btn"
+                  className={`sample-pill-btn ${activePresetKey === preset.id ? 'active' : ''}`}
                   onClick={() => handleSelectFinancialPreset(preset)}
                   title={preset.category}
                 >
@@ -373,8 +571,8 @@ export default function App() {
                 <button
                   type="button"
                   key={idx}
-                  className="sample-pill-btn spec-rule-pill"
-                  onClick={() => handleSelectRuleExample(spec)}
+                  className={`sample-pill-btn spec-rule-pill ${activePresetKey === `rule-${idx}` ? 'active' : ''}`}
+                  onClick={() => handleSelectRuleExample(spec, idx)}
                   title={spec.title}
                 >
                   {spec.label}
@@ -385,23 +583,26 @@ export default function App() {
         <textarea
           className="scenario-textarea"
           value={scenarioInput}
-          onChange={(e) => setScenarioInput(e.target.value)}
-          placeholder="Describe your financial services module, clearing rail, core banking workflow, or paste policy notes (Tip: include a sample PAN 4111-2222-3333-4444 or account number to test automatic PCI/PII masking)..."
+          onChange={(e) => {
+            setScenarioInput(e.target.value);
+            if (activePresetKey) setActivePresetKey('');
+          }}
+          placeholder="Describe your financial module, clearing rail, core banking workflow, or paste policy notes (include a sample PAN 4111-2222-3333-4444 or account number to test automatic PCI/PII masking)..."
         />
 
         <div className="action-bar">
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {scenarioInput.trim().length} characters • PCI/PII automatically masked before agent inference
+            {scenarioInput.trim().length} characters | PCI/PII masked prior to inference
           </span>
 
           <div className="config-group">
-            {reqData && sdlcData && (
+            {reqData && sdlcData && !pipelineResult?.failed && (
               <>
                 <button type="button" className="sample-pill-btn" onClick={handleExportSRS}>
                   <Download size={14} /> Export IEEE 830 SRS (.md)
                 </button>
                 <button type="button" className="sample-pill-btn" onClick={handleCopySummary}>
-                  {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                  {copied ? <Check size={14} color="var(--accent)" /> : <Copy size={14} />}
                   {copied ? 'Copied' : 'Copy SRS'}
                 </button>
               </>
@@ -411,27 +612,111 @@ export default function App() {
               type="button"
               className="submit-btn"
               disabled={isProcessing || !scenarioInput.trim()}
-              onClick={() => executePipeline({ text: scenarioInput, title: 'Custom Financial Scenario' })}
+              onClick={() => executePipeline({ text: scenarioInput, title: scenarioTitle || 'Custom Financial Scenario' })}
             >
-              {isProcessing ? 'Running Multi-Agent Pipeline...' : 'Run Financial AI Agents'} <ArrowRight size={15} />
+              {isProcessing ? (
+                <><Loader2 size={15} className="spin" /> Running Pipeline...</>
+              ) : (
+                <>Run Analysis <ArrowRight size={15} /></>
+              )}
             </button>
           </div>
         </div>
       </section>
 
-      {/* PCI/PII redaction notice */}
-      {privacyResult && privacyResult.totalRedacted > 0 && (
-        <div className="info-banner privacy">
-          <Shield size={20} style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <strong>PCI/PII Privacy Guardrail Active:</strong> Redacted{' '}
-            <strong>{privacyResult.totalRedacted} sensitive financial/PII item(s)</strong> (
-            {privacyResult.redactions.map((r) => `${r.count} ${r.type}`).join(', ')}) before running requirements analysis.
-          </div>
-        </div>
+      {reqData && sdlcData && !pipelineResult?.failed && (
+        <nav className="pipeline-bar" aria-label="Pipeline stage summary">
+          <button
+            type="button"
+            className={`pipeline-step ${privacyResult?.totalRedacted > 0 ? 'warn' : ''}`}
+            onClick={() => scrollToRef(privacyRef)}
+          >
+            <Shield size={15} className="pipeline-step-icon" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pipeline-step-title">1. Privacy Guard</div>
+              <div className="pipeline-step-metric">
+                {privacyResult?.totalRedacted > 0
+                  ? `${privacyResult.totalRedacted} token(s) masked`
+                  : '0 raw IDs exposed'}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="pipeline-step"
+            onClick={() => {
+              setAgent1Tab('rtm');
+              scrollToRef(agent1Ref);
+            }}
+          >
+            <BookOpen size={15} className="pipeline-step-icon" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pipeline-step-title">2. Regulatory RAG</div>
+              <div className="pipeline-step-metric">{reqData.retrievedKnowledge.length} clauses matched</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="pipeline-step"
+            onClick={() => {
+              setAgent1Tab('reqs');
+              scrollToRef(agent1Ref);
+            }}
+          >
+            <ClipboardCheck size={15} className="pipeline-step-icon" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pipeline-step-title">3. Requirements</div>
+              <div className="pipeline-step-metric">
+                {totalReqs} reqs | Quality {reqData.qualityReport.overallScore}/100
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="pipeline-step"
+            onClick={() => scrollToRef(clarifRef)}
+          >
+            <MessageSquare size={15} className="pipeline-step-icon" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pipeline-step-title">4. Clarification</div>
+              <div className="pipeline-step-metric">
+                {answeredClarifCount}/{clarifications.length} answered
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="pipeline-step"
+            onClick={() => scrollToRef(agent2Ref)}
+          >
+            <GitBranch size={15} className="pipeline-step-icon" />
+            <div style={{ minWidth: 0 }}>
+              <div className="pipeline-step-title">5. SDLC Architect</div>
+              <div className="pipeline-step-metric">
+                {sdlcData.recommendedModel} ({sdlcData.suitabilityScore})
+              </div>
+            </div>
+          </button>
+        </nav>
       )}
 
-      {/* Validation error */}
+      <div ref={privacyRef}>
+        {privacyResult && privacyResult.totalRedacted > 0 && (
+          <div className="info-banner privacy">
+            <Shield size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong>PCI/PII Privacy Guardrail Active:</strong> Redacted{' '}
+              <strong>{privacyResult.totalRedacted} sensitive financial/PII item(s)</strong> (
+              {privacyResult.redactions.map((r) => `${r.count} ${r.type}`).join(', ')}) before running requirements analysis.
+            </div>
+          </div>
+        )}
+      </div>
+
       {errorMessage && (
         <div className="info-banner error">
           <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -441,32 +726,47 @@ export default function App() {
         </div>
       )}
 
-      {/* Clarification interview panel */}
-      {reqData && clarifications.length > 0 && (
-        <section className="clarif-card">
+      {reqData && clarifications.length > 0 && !pipelineResult?.failed && (
+        <section className="clarif-card" ref={clarifRef}>
           <div className="clarif-header">
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontWeight: 800, fontSize: '0.96rem' }}>
-                <MessageSquare size={16} color="#34d399" /> Adaptive Clarification Agent ({clarifications.length} Financial Questions)
+                <MessageSquare size={16} color="var(--accent-light)" />
+                Adaptive Clarification ({answeredClarifCount}/{clarifications.length} Answered)
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Answer any unstated financial constraints below and re-run to dynamically refine NFR SLAs and SDLC scores.
+                Select unstated financial constraints and re-run to refine NFR SLAs and SDLC factor weights.
               </div>
             </div>
-            <button
-              type="button"
-              className="sample-pill-btn"
-              style={{ borderColor: 'rgba(16, 185, 129, 0.5)', color: '#34d399' }}
-              onClick={() => executePipeline({ answers: clarificationAnswers })}
-              disabled={isProcessing}
-            >
-              <RefreshCw size={13} /> Apply Clarifications &amp; Re-Analyze
-            </button>
+            <div className="config-group">
+              {answeredClarifCount > 0 && (
+                <button
+                  type="button"
+                  className="sample-pill-btn"
+                  onClick={() => {
+                    setClarificationAnswers({});
+                    executePipeline({ answers: {} });
+                  }}
+                  disabled={isProcessing}
+                >
+                  <RotateCcw size={13} /> Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="sample-pill-btn"
+                style={{ borderColor: 'rgba(16, 185, 129, 0.5)', color: 'var(--accent-light)' }}
+                onClick={() => executePipeline({ answers: clarificationAnswers })}
+                disabled={isProcessing}
+              >
+                <RefreshCw size={13} /> Apply &amp; Re-Analyze
+              </button>
+            </div>
           </div>
 
           <div className="clarif-grid">
             {clarifications.map((q) => (
-              <div key={q.id} className="clarif-item">
+              <div key={q.id} className={`clarif-item ${clarificationAnswers[q.id] ? 'answered' : ''}`}>
                 <div className="clarif-topic">{q.topic}</div>
                 <div className="clarif-q">{q.question}</div>
                 <select
@@ -492,23 +792,20 @@ export default function App() {
         </section>
       )}
 
-      {/* Main output grid */}
       {reqData && sdlcData && !pipelineResult?.failed && (
         <main className="agents-grid">
-          {/* Requirements and quality audit */}
-          <article className="agent-panel agent-1">
+          <article className="agent-panel agent-1" ref={agent1Ref}>
             <header className="agent-panel-header">
-              <span className="agent-meta-tag">Agent 1: Financial Requirements &amp; Compliance Engineer</span>
+              <span className="agent-meta-tag">Agent 1: Requirements &amp; Compliance Engineer</span>
               <h2 className="agent-panel-title">Requirements, Quality Audit &amp; RAG Grounding</h2>
               <div className="badge-row">
                 <span className="mini-badge">{reqData.domain}</span>
                 <span className="mini-badge good">Quality: {reqData.qualityReport.overallScore}/100</span>
                 <span className="mini-badge">Avg Confidence: {Math.round(reqData.metrics.averageConfidence * 100)}%</span>
-                <span className="mini-badge">HITL Approved: {approvedCount}/{totalReqs}</span>
+                <span className="mini-badge">Approved: {approvedCount}/{totalReqs}</span>
               </div>
             </header>
 
-            {/* Sub-navigation */}
             <div className="subtabs">
               <button
                 type="button"
@@ -535,135 +832,91 @@ export default function App() {
 
             {agent1Tab === 'reqs' && (
               <>
+                <div className="filter-bar">
+                  <div className="filter-pills">
+                    {[
+                      { id: 'all', label: `All (${totalReqs})` },
+                      { id: 'pending', label: `Pending (${pendingCount})` },
+                      { id: 'approved', label: `Approved (${approvedCount})` },
+                      { id: 'flagged', label: `Flagged (${flaggedCount})` }
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        className={`filter-pill ${reqFilter === f.id ? 'active' : ''}`}
+                        onClick={() => setReqFilter(f.id)}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {pendingCount > 0 && (
+                    <button type="button" className="inline-link-btn" onClick={handleApproveRemaining}>
+                      <CheckCircle size={13} /> Approve Remaining ({pendingCount})
+                    </button>
+                  )}
+                </div>
+
                 <div className="section-heading">
-                  <span>Functional Requirements ({reqData.functionalRequirements.length})</span>
+                  <span>Functional Requirements ({filteredFRs.length})</span>
                   <span>Human-in-the-Loop Controls</span>
                 </div>
-                <div className="req-list">
-                  {reqData.functionalRequirements.map((fr) => {
-                    const status = approvalMap[fr.id];
-                    return (
-                      <div
+                {filteredFRs.length === 0 ? (
+                  <div className="req-card">
+                    <p className="req-desc">No functional requirements match the selected filter.</p>
+                  </div>
+                ) : (
+                  <div className="req-list">
+                    {filteredFRs.map((fr) => (
+                      <RequirementCard
                         key={fr.id}
-                        className={`req-card ${status === 'Approved' ? 'approved' : status === 'Flagged for Revision' ? 'flagged' : ''}`}
-                      >
-                        <div className="req-top">
-                          <span className="req-id">{fr.id}</span>
-                          <div className="badge-row" style={{ marginTop: 0 }}>
-                            <span className="mini-badge">{fr.priority}</span>
-                            <span className="mini-badge good">{Math.round((fr.confidence || 0.92) * 100)}% conf</span>
-                          </div>
-                        </div>
-                        <div className="req-title">{fr.title}</div>
-                        <p className="req-desc">{fr.statement}</p>
-
-                        <div className="badge-row">
-                          {(fr.citations || []).map((c) => (
-                            <span key={c} className="mini-badge cite">{c}</span>
-                          ))}
-                          {(fr.multiLabels || []).map((lbl) => (
-                            <span key={lbl} className="mini-badge">{lbl}</span>
-                          ))}
-                        </div>
-
-                        {fr.acceptanceCriteria?.length > 0 && (
-                          <div className="req-ac">
-                            <strong>Acceptance Criteria:</strong>
-                            <ul>
-                              {fr.acceptanceCriteria.slice(0, 2).map((ac, i) => (
-                                <li key={i}>{ac}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        <div className="hitl-bar">
-                          <span style={{ fontSize: '0.73rem', color: 'var(--text-dim)' }}>
-                            Status: <strong>{status || 'Pending Review'}</strong>
-                          </span>
-                          <div className="config-group">
-                            <button
-                              type="button"
-                              className={`hitl-btn approve ${status === 'Approved' ? 'active' : ''}`}
-                              onClick={() => handleRequirementDecision(fr.id, 'Approved')}
-                            >
-                              <CheckCircle size={12} /> Approve
-                            </button>
-                            <button
-                              type="button"
-                              className={`hitl-btn flag ${status === 'Flagged for Revision' ? 'active' : ''}`}
-                              onClick={() => handleRequirementDecision(fr.id, 'Flagged for Revision')}
-                            >
-                              <Flag size={12} /> Flag
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        item={fr}
+                        kind="fr"
+                        status={approvalMap[fr.id]}
+                        isExpanded={Boolean(expandedReqIds[fr.id])}
+                        onToggleExpand={() =>
+                          setExpandedReqIds((prev) => ({ ...prev, [fr.id]: !prev[fr.id] }))
+                        }
+                        onDecision={handleRequirementDecision}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <div className="section-heading" style={{ marginTop: '1.35rem' }}>
-                  <span>Non-Functional Requirements ({reqData.nonFunctionalRequirements.length})</span>
+                  <span>Non-Functional Requirements ({filteredNFRs.length})</span>
                   <span>Quantified Financial SLAs</span>
                 </div>
-                <div className="req-list">
-                  {reqData.nonFunctionalRequirements.map((nfr) => {
-                    const status = approvalMap[nfr.id];
-                    return (
-                      <div
+                {filteredNFRs.length === 0 ? (
+                  <div className="req-card">
+                    <p className="req-desc">No non-functional requirements match the selected filter.</p>
+                  </div>
+                ) : (
+                  <div className="req-list">
+                    {filteredNFRs.map((nfr) => (
+                      <RequirementCard
                         key={nfr.id}
-                        className={`req-card ${status === 'Approved' ? 'approved' : status === 'Flagged for Revision' ? 'flagged' : ''}`}
-                      >
-                        <div className="req-top">
-                          <span className="req-id" style={{ color: 'var(--emerald-light)' }}>{nfr.id}</span>
-                          <div className="badge-row" style={{ marginTop: 0 }}>
-                            <span className="mini-badge">{nfr.category}</span>
-                            <span className="mini-badge good">{Math.round((nfr.confidence || 0.94) * 100)}% conf</span>
-                          </div>
-                        </div>
-                        <div className="req-title">{nfr.title}</div>
-                        <p className="req-desc">{nfr.statement}</p>
-                        <div style={{ marginTop: '0.45rem', fontSize: '0.78rem', color: 'var(--emerald-light)' }}>
-                          <strong>Target SLA:</strong> {nfr.targetMetrics}
-                        </div>
-                        <div className="badge-row">
-                          {(nfr.citations || []).map((c) => (
-                            <span key={c} className="mini-badge cite">{c}</span>
-                          ))}
-                        </div>
-                        <div className="hitl-bar">
-                          <span style={{ fontSize: '0.73rem', color: 'var(--text-dim)' }}>
-                            Status: <strong>{status || 'Pending Review'}</strong>
-                          </span>
-                          <div className="config-group">
-                            <button
-                              type="button"
-                              className={`hitl-btn approve ${status === 'Approved' ? 'active' : ''}`}
-                              onClick={() => handleRequirementDecision(nfr.id, 'Approved')}
-                            >
-                              <CheckCircle size={12} /> Approve
-                            </button>
-                            <button
-                              type="button"
-                              className={`hitl-btn flag ${status === 'Flagged for Revision' ? 'active' : ''}`}
-                              onClick={() => handleRequirementDecision(nfr.id, 'Flagged for Revision')}
-                            >
-                              <Flag size={12} /> Flag
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        item={nfr}
+                        kind="nfr"
+                        status={approvalMap[nfr.id]}
+                        isExpanded={Boolean(expandedReqIds[nfr.id])}
+                        onToggleExpand={() =>
+                          setExpandedReqIds((prev) => ({ ...prev, [nfr.id]: !prev[nfr.id] }))
+                        }
+                        onDecision={handleRequirementDecision}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
             {agent1Tab === 'quality' && (
               <div>
                 <div className="section-heading">
-                  <span>Vague / Ambiguous Terms Detected ({reqData.qualityReport.ambiguities.length})</span>
+                  <span>Vague / Ambiguous Terms ({reqData.qualityReport.ambiguities.length})</span>
+                  <span>{reqData.qualityReport.testabilityRating}</span>
                 </div>
                 {reqData.qualityReport.ambiguities.length === 0 ? (
                   <div className="req-card">
@@ -675,7 +928,7 @@ export default function App() {
                       <div key={idx} className="req-card flagged">
                         <div className="req-title">Ambiguous Term: &ldquo;{a.term}&rdquo;</div>
                         <p className="req-desc">{a.finding}</p>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--emerald-light)', marginTop: '0.35rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--accent-light)', marginTop: '0.35rem' }}>
                           <strong>Fix:</strong> {a.recommendation}
                         </p>
                       </div>
@@ -697,7 +950,7 @@ export default function App() {
                         <div className="req-id">{c.id}</div>
                         <div className="req-title">{c.title}</div>
                         <p className="req-desc">{c.description}</p>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--emerald-light)', marginTop: '0.35rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--accent-light)', marginTop: '0.35rem' }}>
                           <strong>Suggested Resolution:</strong> {c.resolution}
                         </p>
                       </div>
@@ -712,7 +965,7 @@ export default function App() {
                   {reqData.riskRegister.map((r) => (
                     <div key={r.id} className="req-card">
                       <div className="req-top">
-                        <span className="req-id">{r.id} • {r.category}</span>
+                        <span className="req-id">{r.id} | {r.category}</span>
                         <span className="mini-badge">{r.severity}</span>
                       </div>
                       <p className="req-desc">{r.risk}</p>
@@ -740,7 +993,7 @@ export default function App() {
                       <div className="req-title">{kb.title}</div>
                       <p className="req-desc">{kb.requirement}</p>
                       <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '0.3rem' }}>
-                        Jurisdiction: {kb.jurisdiction} • Effective: {kb.effectiveDate}
+                        Jurisdiction: {kb.jurisdiction} | Effective: {kb.effectiveDate}
                       </div>
                     </div>
                   ))}
@@ -762,7 +1015,7 @@ export default function App() {
                     <tbody>
                       {reqData.traceabilityMatrix.map((row) => (
                         <tr key={row.requirementId}>
-                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--emerald-light)' }}>{row.requirementId}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-light)' }}>{row.requirementId}</td>
                           <td>{row.title}</td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>{row.citations}</td>
                           <td>{row.verificationStage}</td>
@@ -775,20 +1028,18 @@ export default function App() {
             )}
           </article>
 
-          {/* SDLC selection and tuning */}
-          <article className="agent-panel agent-2">
+          <article className="agent-panel agent-2" ref={agent2Ref}>
             <header className="agent-panel-header">
-              <span className="agent-meta-tag">Agent 2: Financial SDLC Architect (Hybrid MCDA)</span>
-              <h2 className="agent-panel-title">SDLC Selection, Live Factor Tuning &amp; Workflow</h2>
+              <span className="agent-meta-tag">Agent 2: SDLC Architect (MCDA)</span>
+              <h2 className="agent-panel-title">SDLC Selection, Factor Tuning &amp; Workflow</h2>
               <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
-                Combines 8 quantitative financial factors, MCDA utility scoring, and 6 deterministic governance rules.
+                Evaluates 8 quantitative financial factors using weighted MCDA scoring and 6 deterministic governance rules.
               </p>
             </header>
 
-            {/* Primary SDLC Recommendation + HITL Sign-Off */}
             <div className="sdlc-highlight">
               <div className="req-top">
-                <span style={{ fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--emerald-light)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.76rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-light)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <Award size={14} /> Primary Recommendation
                 </span>
                 <span className="mini-badge good">{sdlcData.suitabilityScore} Suitability</span>
@@ -799,7 +1050,6 @@ export default function App() {
               )}
               <p className="req-desc" style={{ marginTop: '0.45rem' }}>{sdlcData.justification}</p>
 
-              {/* Human-in-the-Loop SDLC Approval Gate */}
               <div className="signoff-box">
                 <input
                   type="text"
@@ -824,14 +1074,13 @@ export default function App() {
                   <Flag size={13} /> Request Revision
                 </button>
                 {sdlcSignOff && (
-                  <span style={{ fontSize: '0.74rem', color: 'var(--emerald-light)' }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--accent-light)' }}>
                     Recorded: {sdlcSignOff.status} ({sdlcSignOff.timestamp})
                   </span>
                 )}
               </div>
             </div>
 
-            {/* 6-Model MCDA Ranking */}
             <div className="section-heading">
               <span>Ranked SDLC Models (6 Evaluated)</span>
               <span>Click any model for trade-offs</span>
@@ -852,7 +1101,7 @@ export default function App() {
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{model.matchLevel}</span>
                         </div>
                         <div className="score-bar-track">
-                          <div className="score-bar-fill" style={{ width: `${model.score}%` }} />
+                          <div className="score-bar-fill" style={{ width: model.suitabilityScore }} />
                         </div>
                       </div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -866,13 +1115,13 @@ export default function App() {
                         <p className="req-desc">{model.rationale}</p>
                         <div className="pros-cons">
                           <div>
-                            <strong style={{ color: '#34d399' }}>Strengths:</strong>
+                            <strong style={{ color: 'var(--accent-light)' }}>Strengths:</strong>
                             <ul style={{ marginLeft: '1rem', marginTop: '0.2rem', color: 'var(--text-muted)' }}>
                               {model.pros.map((p, i) => <li key={i}>{p}</li>)}
                             </ul>
                           </div>
                           <div>
-                            <strong style={{ color: '#ef4444' }}>Constraints:</strong>
+                            <strong style={{ color: 'var(--danger)' }}>Constraints:</strong>
                             <ul style={{ marginLeft: '1rem', marginTop: '0.2rem', color: 'var(--text-muted)' }}>
                               {model.cons.map((c, i) => <li key={i}>{c}</li>)}
                             </ul>
@@ -885,18 +1134,22 @@ export default function App() {
               })}
             </div>
 
-            {/* Interactive 8-Factor Sliders */}
             <div className="section-heading" style={{ marginTop: '1.15rem' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <Sliders size={13} /> Interactive Decision Factors (Drag to Re-Rank Live)
               </span>
+              {isManuallyTuned && (
+                <button type="button" className="inline-link-btn" onClick={handleResetSliders}>
+                  <RotateCcw size={12} /> Reset Sliders
+                </button>
+              )}
             </div>
             <div className="sliders-grid">
               {FACTOR_LABELS.map(({ key, label }) => (
                 <div key={key} className="slider-tile">
                   <div className="slider-top">
                     <span>{label}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--emerald-light)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-light)' }}>
                       {sdlcData.evaluatedFactors[key]}%
                     </span>
                   </div>
@@ -912,53 +1165,121 @@ export default function App() {
               ))}
             </div>
 
-            {/* 5-Phase Financial Workflow */}
             <div className="section-heading" style={{ marginTop: '1.25rem' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <FileText size={13} /> Financial-Specific 5-Phase Workflow
+                <FileText size={13} /> 5-Phase Financial Workflow (Click phase to expand)
               </span>
               <span>{sdlcData.recommendedModel}</span>
             </div>
             <div>
-              {sdlcData.projectWorkflow.map((phase) => (
-                <div key={phase.phaseNumber} className="phase-card">
-                  <div className="phase-head">
-                    <strong>Phase {phase.phaseNumber}: {phase.phaseName}</strong>
-                    <span className="mini-badge">{phase.durationEstimate}</span>
+              {sdlcData.projectWorkflow.map((phase) => {
+                const isOpen = Boolean(expandedPhaseNumbers[phase.phaseNumber]);
+                return (
+                  <div
+                    key={phase.phaseNumber}
+                    className="phase-card"
+                    onClick={(e) => {
+                      if (e.target.closest('.phase-details')) return;
+                      setExpandedPhaseNumbers((prev) => ({
+                        ...prev,
+                        [phase.phaseNumber]: !prev[phase.phaseNumber]
+                      }));
+                    }}
+                  >
+                    <div className="phase-head">
+                      <strong>Phase {phase.phaseNumber}: {phase.phaseName}</strong>
+                      <div className="config-group">
+                        <span className="mini-badge">{phase.durationEstimate}</span>
+                        {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </div>
+                    </div>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '0.35rem' }}>{phase.objective}</p>
+                    <div style={{ fontSize: '0.76rem', color: '#cbd5e1' }}>
+                      <strong>Roles:</strong> {phase.responsibleRoles.join(', ')}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--accent-light)', marginTop: '0.2rem' }}>
+                      <strong>Compliance Gate:</strong> {phase.complianceCheckpoints}
+                    </div>
+
+                    {isOpen && (
+                      <div className="phase-details">
+                        <div>
+                          <strong style={{ color: 'var(--text-main)' }}>Key Activities:</strong>
+                          <ul>
+                            {phase.activities.map((act, i) => <li key={i}>{act}</li>)}
+                          </ul>
+                        </div>
+                        <div>
+                          <strong style={{ color: 'var(--text-main)' }}>Deliverables:</strong> {phase.deliverables.join('; ')}
+                        </div>
+                        <div>
+                          <strong style={{ color: 'var(--text-main)' }}>Security Controls:</strong> {phase.securityControls.join('; ')}
+                        </div>
+                        <div>
+                          <strong style={{ color: 'var(--text-main)' }}>Gate Criteria:</strong> {phase.entryCriteria} -&gt; {phase.exitCriteria}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '0.35rem' }}>{phase.objective}</p>
-                  <div style={{ fontSize: '0.76rem', color: '#cbd5e1' }}>
-                    <strong>Roles:</strong> {phase.responsibleRoles.join(', ')}
-                  </div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--emerald-light)', marginTop: '0.2rem' }}>
-                    <strong>Compliance Gate:</strong> {phase.complianceCheckpoints}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </article>
         </main>
       )}
 
-      {/* Audit trail */}
       {logs.length > 0 && (
         <section className="audit-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '0.95rem' }}>
-            <Activity size={16} color="#10b981" /> Multi-Agent Execution &amp; Human-in-the-Loop Audit Trail ({logs.length} Events)
-          </div>
-          <div className="audit-list">
-            {logs.map((log) => (
-              <div key={log.id} className={`audit-row ${log.status === 'warn' ? 'warn' : log.status === 'error' ? 'error' : ''}`}>
-                <span className="audit-time">{log.timestamp}</span>
-                <div>
-                  <strong>[{log.agent} • {log.phase}]</strong> {log.message}
-                </div>
+          <div className="audit-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '0.95rem' }}>
+              <Activity size={16} color="var(--accent)" />
+              Execution &amp; Review Audit Trail ({logs.length} Events)
+            </div>
+            <div className="config-group">
+              <div className="filter-pills">
+                <button
+                  type="button"
+                  className={`filter-pill ${auditFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setAuditFilter('all')}
+                >
+                  All ({logs.length})
+                </button>
+                <button
+                  type="button"
+                  className={`filter-pill ${auditFilter === 'issues' ? 'active' : ''}`}
+                  onClick={() => setAuditFilter('issues')}
+                >
+                  Warnings / Errors ({logs.filter((l) => l.status === 'warn' || l.status === 'error').length})
+                </button>
               </div>
-            ))}
+              <button
+                type="button"
+                className="sample-pill-btn"
+                onClick={() => setAuditCollapsed((v) => !v)}
+              >
+                {auditCollapsed ? <><ChevronDown size={13} /> Expand</> : <><ChevronUp size={13} /> Collapse</>}
+              </button>
+            </div>
           </div>
+
+          {!auditCollapsed && (
+            <div className="audit-list">
+              {visibleLogs.length === 0 ? (
+                <div className="audit-row">No warning or error events recorded.</div>
+              ) : (
+                visibleLogs.map((log) => (
+                  <div key={log.id} className={`audit-row ${log.status === 'warn' ? 'warn' : log.status === 'error' ? 'error' : ''}`}>
+                    <span className="audit-time">{log.timestamp}</span>
+                    <div>
+                      <strong>[{log.agent} / {log.phase}]</strong> {log.message}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </section>
       )}
     </div>
   );
 }
-

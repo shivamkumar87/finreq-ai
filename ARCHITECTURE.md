@@ -1,30 +1,238 @@
-# System Architecture — FinReq AI (Financial RE & SDLC Platform)
+# System Architecture — FinReq AI
 
-**Domain:** Banking, FinTech & Capital Markets Software Engineering  
-**Standards:** IEEE 830 (SRS), ISO/IEC 25010, PCI-DSS v4.0, RBI Cyber Security Framework & DLG 2023, GDPR / Data Sovereignty, Basel III/IV (BCBS 239), SOX 404, ISO 20022  
+Technical architecture, data flows, scoring formulas, and module responsibilities for FinReq AI.
 
-## 1. Multi-Agent Pipeline Overview
-Every request passes through `AgentOrchestrator.runPipeline()` in `src/agents/orchestrator.js`:
+**Domain:** Banking, FinTech, and Capital Markets Software Engineering  
+**Referenced Standards:** IEEE 830, ISO/IEC 25010, PCI-DSS v4.0, RBI CSF & DLG 2023, GDPR, Basel III / BCBS 239, SOX 404, ISO 20022, SEBI / SEC Cir. 2023/88
 
-1. **Privacy & Security Guardrail (`src/agents/privacyGuard.js`)**: Masks sensitive PCI/PII tokens (Credit Card PANs, Bank Accounts/IBANs, Emails, Phone numbers, Gov IDs like Aadhaar/SSN, API Secrets) and blocks prompt-injection patterns before any agent or LLM processes the text.
-2. **Financial RAG Retriever (`src/agents/knowledgeBase.js`)**: Scores and retrieves versioned regulatory clauses (PCI-DSS 4.0, RBI CSF, GDPR, Basel III, SOX 404, ISO 20022, SEBI Algo Risk, ISO 25010) with jurisdiction metadata, clause IDs, and confidence scores.
-3. **Agent 1 — Financial Requirements & Quality Engineer (`src/agents/requirementAgent.js`)**: Extracts structured FRs/NFRs (either via live `gemini-2.5-flash` grounded in RAG context when an API key is supplied, or via the Local Financial RAG Engine), runs IEEE 830 ambiguity and conflict audits, and builds the Risk Register and Traceability Matrix.
-4. **Adaptive Clarification Agent (`src/agents/clarificationAgent.js`)**: Identifies missing financial constraints (peak TPS/concurrency, regulatory jurisdiction, disaster recovery RTO/RPO, payment clearing rails, release governance) and feeds stakeholder answers back into Agent 1 and Agent 2.
-5. **Agent 2 — Financial SDLC Architect (`src/agents/sdlcAgent.js`)**: Extracts 8 quantitative factors, evaluates 6 candidate SDLC models via weighted MCDA + 6 deterministic rules, supports live slider tuning in `src/App.jsx`, and generates a 5-phase financial SDLC workflow.
-6. **Human-in-the-Loop (HITL) Governance & Exporter (`src/App.jsx`, `src/utils/srsExporter.js`)**: Captures per-requirement Approve/Flag decisions, reviewer SDLC sign-off, and timestamped audit logs, exporting everything into an IEEE 830 Markdown SRS.
+---
 
-## 2. File Structure
-| Path | Responsibility |
+## 1. End-to-End Pipeline
+
+Every analysis runs through `AgentOrchestrator.runPipeline(rawScenarioText, options)` in `src/agents/orchestrator.js`:
+
+```mermaid
+flowchart TD
+    UI["React UI (src/App.jsx)"] -->|rawScenarioText + options| Orch["AgentOrchestrator.runPipeline()"]
+
+    subgraph Stage1["Stage 1: Privacy & Validation (privacyGuard.js)"]
+        Mask["maskSensitiveFinancialData()\nMasks PAN, IBAN/Acct, Gov ID, Secrets, Email, Phone"]
+        Val["validateFinancialScenario()\nLength >= 15, words >= 4, injection & profanity block, financial keywords"]
+        Mask --> Val
+    end
+
+    Orch --> Mask
+    Val -->|Invalid| Err["Throw Error + Partial Audit Logs"]
+    Val -->|Valid maskedText| RAG["Stage 2: retrieveFinancialContext()\n(knowledgeBase.js)\nKeyword scoring over 8 clauses -> top 5"]
+
+    RAG --> ModeCheck{"Gemini API key\nlength > 10?"}
+
+    subgraph Stage3["Stage 3: RequirementAgent (requirementAgent.js)"]
+        LLM["_callGeminiLLM()\nPOST gemini-2.5-flash (temp 0.2, JSON)\nGrounded with top 5 RAG clauses"]
+        Local["_generateLocalRAGRequirements()\nDomain detection + template synthesis\n4 FRs + 4 NFRs"]
+        Audit["auditRequirementQuality()\n6 vague-term checks + 3 conflict checks\n+ 4-item Risk Register + RTM"]
+        LLM -->|On HTTP/JSON error| Local
+        LLM -->|Success| Audit
+        Local --> Audit
+    end
+
+    ModeCheck -->|Yes| LLM
+    ModeCheck -->|No| Local
+
+    Audit --> Clarify["Stage 4: ClarificationAgent.generateClarifications()\n(clarificationAgent.js)\nDetects missing TPS, regime, RTO/RPO, rails, release cadence"]
+
+    Clarify --> SDLC["Stage 5: SdlcAgent.evaluateSDLC()\n(sdlcAgent.js)\n8-factor extraction + weighted MCDA + 6 rules + 5-phase workflow"]
+
+    SDLC --> Return["Return Pipeline Result Bundle"]
+    Return --> UI
+```
+
+---
+
+## 2. Interactive Feedback Loops
+
+Once the initial pipeline completes, three client-side loops run without requiring a backend:
+
+```mermaid
+flowchart LR
+    State["Current Pipeline Result"]
+    ClarifLoop["Clarification Answers\nRe-runs full orchestrator pipeline\nUpdates NFRs, RAG matches & MCDA factors"]
+    SliderLoop["Interactive Factor Sliders\nSets _fromSlider = true\nCalls liveSdlcAgent.evaluateSDLC() directly\nRe-ranks 6 SDLC models immediately"]
+    HITLLoop["HITL Governance\nApprove/Flag per FR & NFR\nSDLC Sign-off + Reviewer Name\nAppends events to audit trail"]
+    Export["SRS Exporter (srsExporter.js)\nCompiles Markdown SRS + RTM + Audit Log"]
+
+    State --> ClarifLoop --> State
+    State --> SliderLoop --> State
+    State --> HITLLoop --> State
+    State --> Export
+```
+
+---
+
+## 3. Stage Breakdown
+
+### Stage 1: Privacy Guardrail & Validation (`src/agents/privacyGuard.js`)
+
+Runs before any downstream agent or external LLM request.
+
+#### Redaction Rules (`maskSensitiveFinancialData`)
+
+| PII / PCI Category | Replacement Token | Detection Scope |
+|---|---|---|
+| Primary Account Number | `[REDACTED_PCI_PAN]` | 13-19 digit card numbers (Visa, MC, Discover, Amex, JCB, RuPay) and grouped 4-digit card patterns |
+| Bank Account / IBAN | `[REDACTED_BANK_ACCOUNT]` | IBAN strings (`[A-Z]{2}[0-9]{2}...`) and prefixed account numbers (`ACC`/`ACCT`/`ACCOUNT`) |
+| Government ID | `[REDACTED_GOV_ID]` | 12-digit Aadhaar groups, US SSN (`NNN-NN-NNNN`), Indian PAN tax format (`AAAAA9999A`) |
+| API Secret / Credential | `[REDACTED_API_SECRET]` | AWS access keys (`AKIA...`), Stripe live keys (`sk_live_...`), GitHub PATs (`ghp_...`), Bearer tokens |
+| Email Address | `[REDACTED_PII_EMAIL]` | Standard email regex |
+| Phone Number | `[REDACTED_PII_PHONE]` | 10-digit Indian mobile numbers (with optional country code) and 10-digit hyphen/dot/space formats |
+
+#### Input Validation (`validateFinancialScenario`)
+
+1. Rejects non-string/empty inputs and inputs shorter than 15 characters.
+2. Blocks 5 prompt-injection patterns (`ignore previous instructions`, `reveal system prompt`, `disregard prior rules`, `bypass security/compliance/guardrails`, `jailbreak`).
+3. Rejects profanity and inputs with fewer than 4 alphanumeric tokens.
+4. Requires at least one token matching a curated set of financial/software terms (`bank`, `payment`, `pci`, `rbi`, `basel`, `rtgs`, `ledger`, `trading`, etc.).
+
+---
+
+### Stage 2: Regulatory Retrieval (`src/agents/knowledgeBase.js`)
+
+`retrieveFinancialContext(queryText, clarificationAnswers, topK = 5)` merges the masked scenario and clarification answers, tokenizes to lowercase words, and scores each entry in `FINANCIAL_KNOWLEDGE_BASE` (8 entries):
+
+- **Keyword scoring:** For each keyword in an entry's `keywords` list, adds `+2` if `keyword.length > 4`, else `+1` when found in tokens or substring text.
+- **Baseline weight:** Entries `KB-PCIDSS-01` and `KB-RBI-CSF-01` receive a baseline `+2` boost so baseline payment security and banking compliance are surfaced when relevant.
+- **Confidence formula:** `min(0.98, 0.70 + min(rawScore, 15) * 0.02)`.
+- Returns the top 5 entries with `rawScore > 0`, sorted descending.
+
+Also exports `STAKEHOLDER_ROLES` (6 personas: `ciso`, `compliance`, `architect`, `cro`, `product`, `audit`).
+
+---
+
+### Stage 3: Requirements & Quality Engineer (`src/agents/requirementAgent.js`)
+
+#### Extraction Modes
+
+- **Local Mode (`_generateLocalRAGRequirements`):** Detects sub-domain keywords (`hasRTGS`, `hasAlgoTrading`, `hasWealth`, `hasLending`, `hasAuditSOX`, `hasCoreBanking`) and synthesizes 4 domain-tailored Functional Requirements (`FR-FIN-01` to `FR-FIN-04`) and 4 quantified Non-Functional Requirements (`NFR-FIN-01` to `NFR-FIN-04`).
+- **Live LLM Mode (`_callGeminiLLM`):** Invoked when an API key longer than 10 characters is provided. Sends the masked scenario, stakeholder focus, clarification answers, and the top 5 RAG clauses to `gemini-2.5-flash` (`temperature: 0.2`, `responseMimeType: 'application/json'`). Any HTTP or JSON parsing failure falls back cleanly to Local Mode and logs a warning.
+
+#### Requirement Object Shape
+
+```json
+{
+  "id": "FR-FIN-01",
+  "title": "Primary Account Number (PAN) Encryption & FIPS 140-2 Level 3 HSM Tokenization",
+  "category": "Cardholder Data Security & Key Management",
+  "multiLabels": ["Functional", "Security", "Regulatory"],
+  "priority": "Critical",
+  "riskLevel": "Critical",
+  "sourceStakeholder": "Chief Information Security Officer (CISO) & Security Lead",
+  "statement": "The system shall ...",
+  "userStory": "As a CISO, I want ...",
+  "acceptanceCriteria": ["..."],
+  "businessJustification": "...",
+  "applicableRegulations": ["PCI-DSS v4.0 Req 3.4 & 3.5", "RBI Cyber Security Framework Annex 1"],
+  "citations": ["KB-PCIDSS-01", "KB-RBI-CSF-01"],
+  "confidence": 0.97
+}
+```
+
+#### Quality Audit, Risk Register & RTM
+
+- `auditRequirementQuality()` scans for 6 ambiguous terms (`fast`, `user-friendly`, `seamless`, `secure`, `real-time`, `scalable`), skipping terms that already have explicit quantifiers (such as `ms`, `tps`, `aes`, `tls`) in the scenario.
+- Checks 3 financial conflict patterns:
+  - `CONF-FIN-01`: 1-click/frictionless checkout vs. 2FA/SCA/PCI mandates.
+  - `CONF-FIN-02`: Sub-second/instant settlement vs. deep AML/sanctions screening.
+  - `CONF-FIN-03`: Rapid/agile release cadence vs. statutory SOX/PCI/RBI/Basel audit gates.
+- Computes quality score: `clamp(96 - ambiguities * 4 - conflicts * 3, 68, 97)`.
+- Produces a 4-item Risk Register (`RISK-FIN-01` through `RISK-FIN-04`) and maps every FR/NFR into an IEEE 830 Requirements Traceability Matrix (`traceabilityMatrix`).
+
+---
+
+### Stage 4: Adaptive Clarification (`src/agents/clarificationAgent.js`)
+
+`ClarificationAgent.generateClarifications(scenarioText, stakeholderRole)` inspects the scenario text and conditionally raises up to 5 questions for constraints not yet stated:
+
+1. `transaction_volume`: Peak TPS & latency tier (skipped if `tps`, `transactions per second`, `volume`, or `concurrent` is present).
+2. `regulatory_regime`: Governing framework (skipped if `pci`, `rbi`, `basel`, `gdpr`, or `sox` is present).
+3. `financial_dr`: Disaster recovery RTO/RPO targets (skipped if `rto`, `rpo`, `zero data loss`, or `failover` is present).
+4. `interoperability`: Payment rail / clearing protocol (skipped if `iso 20022`, `swift`, `upi`, `ach`, or `core banking` is present).
+5. `release_cadence`: Change frequency & audit gate governance (always asked, tailored to the selected `stakeholderRole`).
+
+---
+
+### Stage 5: SDLC Architect (`src/agents/sdlcAgent.js`)
+
+#### 8-Factor Extraction (`_extractFactors`)
+
+Extracts baseline scores (`0-100`, clamped) from scenario text + clarification answers, overridden by any keys passed in `customFactors`:
+
+- `requirementStability` (base `54`)
+- `changeFrequency` (base `52`)
+- `regulatoryCriticality` (base `50`)
+- `securityRisk` (base `55`)
+- `technicalUncertainty` (base `30`)
+- `failureConsequence` (base `55`)
+- `continuousDeploymentNeed` (base `45`)
+- `formalVerificationNeed` (base `45`)
+
+#### Weighted MCDA Formulas (`_performMCDA`)
+
+Using shorthand `stab`, `chg`, `reg`, `sec`, `unc`, `fail`, `deploy`, `verif`:
+
+- **Waterfall:** `0.38*stab + 0.22*verif + 0.25*(100 - chg) + 0.15*(100 - unc)`
+- **V-Model:** `0.38*verif + 0.22*fail + 0.18*reg + 0.12*stab + 0.10*(100 - chg)`
+- **Spiral Model:** `0.44*unc + 0.24*fail + 0.16*(100 - stab) + 0.16*chg`
+- **Agile (Scrum):** `0.42*chg + 0.26*(100 - stab) + 0.20*deploy + 0.12*(100 - verif)` (minus `16` penalty when `reg > 78 || sec > 80`)
+- **DevSecOps:** `0.38*deploy + 0.32*sec + 0.18*chg + 0.12*(100 - stab)`
+- **Agile-DevSecOps Hybrid:** `0.28*reg + 0.24*sec + 0.22*chg + 0.14*deploy + 0.12*verif`
+
+#### 6 Deterministic Override Rules
+
+Checked in priority order. When `customFactors._fromSlider === true`, text-phrase triggers are disabled so users tuning sliders see purely quantitative rule transitions:
+
+1. **Waterfall:** Text contains `"stable requirements"` and `"approvals"` (auto mode), or `stab >= 82 && chg <= 28 && verif >= 65 && fail < 90` -> forces `waterfallScore = 96`.
+2. **V-Model:** Text contains `"strict verification"` or `"verification/validation"` (auto mode), or `verif >= 88 && fail >= 85 && unc < 70 && chg <= 40` -> forces `vModelScore = 96`.
+3. **Spiral Model:** Text contains `"high uncertainty"` or `"technical risk"` (auto mode), or `unc >= 78` -> forces `spiralScore = 96`.
+4. **Agile-DevSecOps Hybrid:** Text contains (`"high regulation"` or `"regulated"`) and (`"evolving"` or `"changing"`) (auto mode), or `reg >= 80 && chg >= 58 && verif >= 70` -> forces `hybridScore = 96`.
+5. **DevSecOps:** Text contains `"continuous secure deployment"` (auto mode), or `deploy >= 85 && sec >= 80 && reg < 90 && verif < 85` -> forces `devSecOpsScore = 96`.
+6. **Agile (Scrum):** Text contains `"frequently changing"` without `"regulation"` or `"secure deployment"` (auto mode), or `chg >= 72 && reg < 75 && sec < 78` -> forces `agileScore = 95`.
+
+#### 5-Phase Workflow (`_generateFinancialWorkflow`)
+
+Generates a 5-phase delivery roadmap (Inception & Scoping -> Architecture & Threat Modeling -> Secure Implementation -> Formal V&V & Penetration Testing -> Production & Chained Audit Ledger) with duration estimates adapted to the winning SDLC model, roles, deliverables, security controls, and entry/exit criteria.
+
+---
+
+### Stage 6: Governance & SRS Export (`src/App.jsx`, `src/utils/srsExporter.js`)
+
+`generateSRSMarkdown()` produces a downloadable/copyable Markdown document containing 8 sections:
+
+1. Introduction, Scope, and Retrieved Regulatory Sources
+2. Functional Requirements (with approval status, user story, acceptance criteria, citations)
+3. Non-Functional Requirements (with target metrics and approval status)
+4. Quality, Ambiguity & Conflict Audit
+5. Financial Risk Register & IEEE 830 RTM
+6. SDLC Selection, MCDA Ranking & 8 Factor Scores
+7. 5-Phase Financial Workflow
+8. HITL Sign-Off Record & Timestamped Agent Execution Audit Log
+
+---
+
+## 4. File Inventory
+
+| File | Role |
 |---|---|
-| `src/App.jsx` | Interactive React UI: Stakeholder role selector, file upload, optional Gemini API key, PCI/PII banner, Clarification Q&A, tabbed Agent 1 workspace, interactive MCDA sliders, HITL sign-off, and Audit Trail |
-| `src/index.css` | Emerald Jade & Charcoal Onyx design system |
-| `src/agents/orchestrator.js` | Central multi-agent coordinator and timestamped audit logger |
-| `src/agents/privacyGuard.js` | PCI/PII redaction regex engine + prompt-injection & domain validator |
-| `src/agents/knowledgeBase.js` | Versioned financial regulatory clauses + local RAG retriever + stakeholder roles |
-| `src/agents/requirementAgent.js` | Live Gemini LLM + Local RAG requirement extraction, ambiguity/conflict audit, Risk Register, and RTM |
-| `src/agents/clarificationAgent.js` | Financial-specific adaptive gap analysis and interview prompts |
-| `src/agents/sdlcAgent.js` | 8-factor MCDA + 6 deterministic rules + 5-phase financial SDLC workflows |
-| `src/agents/presets.js` | 5 Financial case studies + 6 Financial SDLC rule verification scenarios |
-| `src/utils/srsExporter.js` | IEEE 830 Financial SRS & Audit Trail Markdown exporter |
-| `test_agents.mjs` | Automated Node.js verification test suite |
-
+| `index.html` | HTML entry point and Google Fonts setup (`Plus Jakarta Sans`, `JetBrains Mono`, `Inter`) |
+| `vite.config.js` | Vite React build and dev server config (`port: 3000`) |
+| `src/main.jsx` | React 19 root mount |
+| `src/App.jsx` | UI state, preset/file loading, pipeline invocation, live slider updates, HITL controls, SRS export |
+| `src/index.css` | CSS custom properties, layout grid, cards, tables, sliders, audit log styles |
+| `src/agents/orchestrator.js` | `AgentOrchestrator` class coordinating Stages 1-5 and logging |
+| `src/agents/privacyGuard.js` | `maskSensitiveFinancialData` and `validateFinancialScenario` |
+| `src/agents/knowledgeBase.js` | `STAKEHOLDER_ROLES`, `FINANCIAL_KNOWLEDGE_BASE`, `retrieveFinancialContext` |
+| `src/agents/requirementAgent.js` | `RequirementAgent` and `auditRequirementQuality` |
+| `src/agents/clarificationAgent.js` | `ClarificationAgent` gap analysis |
+| `src/agents/sdlcAgent.js` | `SdlcAgent` factor extraction, MCDA, rules, and 5-phase workflow |
+| `src/agents/presets.js` | `FINANCIAL_PRESETS` (5) and `FINANCIAL_SDLC_EXAMPLES` (6) |
+| `src/utils/srsExporter.js` | `generateSRSMarkdown` |
+| `test_agents.mjs` | Node.js verification test suite using `node:assert/strict` |
