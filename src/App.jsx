@@ -8,8 +8,6 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   Upload,
   Key,
   RefreshCw,
@@ -37,69 +35,6 @@ const FACTOR_LABELS = [
   { key: 'continuousDeploymentNeed', label: 'Continuous Deployment' },
   { key: 'formalVerificationNeed', label: 'Formal Verification & Audit' }
 ];
-
-const THEME_OPTIONS = [
-  { id: 'sky-blue', label: '1. Light Blue & Bright Blue' },
-  { id: 'warm-sand', label: '2. Warm Sand & Terracotta' },
-  { id: 'ivory-olive', label: '3. Ivory & Deep Olive' },
-  { id: 'parchment-amber', label: '4. Parchment & Ochre' },
-  { id: 'linen-burgundy', label: '5. Linen & Bordeaux' },
-  { id: 'oatmeal-espresso', label: '6. Oatmeal & Espresso' },
-  { id: 'sandstone-teal', label: '7. Sandstone & Warm Teal' }
-];
-
-const FONT_OPTIONS = [
-  { id: 'editorial-serif', label: '1. Source Serif + IBM Plex' },
-  { id: 'display-fraunces', label: '2. Fraunces + DM Sans' },
-  { id: 'modern-grotesk', label: '3. Space Grotesk + Inter' },
-  { id: 'clean-fintech', label: '4. Plus Jakarta + DM Sans' }
-];
-
-function CycleSelect({ id, label, value, options, onChange }) {
-  const step = (delta) => {
-    const idx = options.findIndex((o) => o.id === value);
-    const nextIdx = (idx + delta + options.length) % options.length;
-    onChange(options[nextIdx].id);
-  };
-
-  return (
-    <>
-      <label className="field-label" htmlFor={id}>{label}</label>
-      <div className="theme-picker">
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => step(-1)}
-          title={`Previous ${label.toLowerCase()}`}
-          aria-label={`Previous ${label.toLowerCase()}`}
-        >
-          <ChevronLeft size={14} />
-        </button>
-        <select
-          id={id}
-          className="select-ctrl"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => step(1)}
-          title={`Next ${label.toLowerCase()}`}
-          aria-label={`Next ${label.toLowerCase()}`}
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
-    </>
-  );
-}
 
 function RequirementRow({ item, kind, status, isExpanded, onToggleExpand, onDecision }) {
   const rowClass = status === 'Approved'
@@ -221,24 +156,6 @@ export default function App() {
   const [expandedPhaseNumbers, setExpandedPhaseNumbers] = useState({});
   const [clarifOpen, setClarifOpen] = useState(false);
 
-  const [theme, setTheme] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem('finreq_theme_v2');
-      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'sky-blue';
-    } catch {
-      return 'sky-blue';
-    }
-  });
-
-  const [fontPair, setFontPair] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem('finreq_font');
-      return FONT_OPTIONS.some((f) => f.id === saved) ? saved : 'editorial-serif';
-    } catch {
-      return 'editorial-serif';
-    }
-  });
-
   const [pipelineResult, setPipelineResult] = useState(null);
   const [baselineFactors, setBaselineFactors] = useState(null);
   const [isManuallyTuned, setIsManuallyTuned] = useState(false);
@@ -292,17 +209,6 @@ export default function App() {
       setIsProcessing(false);
     }
   };
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.dataset.font = fontPair;
-    try {
-      window.localStorage.setItem('finreq_theme_v2', theme);
-      window.localStorage.setItem('finreq_font', fontPair);
-    } catch {
-      // Ignore storage errors in restricted contexts
-    }
-  }, [theme, fontPair]);
 
   useEffect(() => {
     executePipeline({
@@ -559,22 +465,6 @@ export default function App() {
         </div>
 
         <div className="toolbar-group">
-          <CycleSelect
-            id="theme-select"
-            label="Theme"
-            value={theme}
-            options={THEME_OPTIONS}
-            onChange={setTheme}
-          />
-
-          <CycleSelect
-            id="font-select"
-            label="Font"
-            value={fontPair}
-            options={FONT_OPTIONS}
-            onChange={setFontPair}
-          />
-
           <label className="field-label" htmlFor="role-select">Role</label>
           <select
             id="role-select"
