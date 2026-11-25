@@ -9,7 +9,6 @@ export class ClarificationAgent {
     const textLower = (scenarioText || '').toLowerCase();
     const questions = [];
 
-    // 1. Transaction Volume & Peak Concurrency (TPS)
     if (!textLower.includes('tps') && !textLower.includes('transactions per second') && !textLower.includes('volume') && !textLower.includes('concurrent')) {
       questions.push({
         id: 'transaction_volume',
@@ -24,7 +23,6 @@ export class ClarificationAgent {
       });
     }
 
-    // 2. Primary Financial Regulatory Jurisdiction & Regime
     if (!textLower.includes('pci') && !textLower.includes('rbi') && !textLower.includes('basel') && !textLower.includes('gdpr') && !textLower.includes('sox')) {
       questions.push({
         id: 'regulatory_regime',
@@ -39,7 +37,6 @@ export class ClarificationAgent {
       });
     }
 
-    // 3. Financial Downtime & Data Loss Tolerance (RTO / RPO)
     if (!textLower.includes('rto') && !textLower.includes('rpo') && !textLower.includes('zero data loss') && !textLower.includes('failover')) {
       questions.push({
         id: 'financial_dr',
@@ -54,7 +51,6 @@ export class ClarificationAgent {
       });
     }
 
-    // 4. Interoperability with Core Banking & Payment Rails
     if (!textLower.includes('iso 20022') && !textLower.includes('swift') && !textLower.includes('upi') && !textLower.includes('ach') && !textLower.includes('core banking')) {
       questions.push({
         id: 'interoperability',
@@ -69,7 +65,6 @@ export class ClarificationAgent {
       });
     }
 
-    // 5. Release Cadence & Change Governance
     questions.push({
       id: 'release_cadence',
       topic: 'Financial Release Cadence & Audit Gate Governance',

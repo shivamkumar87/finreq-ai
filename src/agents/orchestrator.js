@@ -33,7 +33,6 @@ export class AgentOrchestrator {
       });
     };
 
-    // Redact sensitive PCI/PII tokens before processing
     const privacyResult = maskSensitiveFinancialData(rawScenarioText);
     if (privacyResult.totalRedacted > 0) {
       const typesSummary = privacyResult.redactions.map((r) => `${r.count}x ${r.type}`).join(', ');
@@ -47,7 +46,6 @@ export class AgentOrchestrator {
       addLog('Privacy & Security Guard', 'PCI/PII Redaction', 'Scanned input for financial identifiers (PAN card, IBAN, email, phone, Gov ID, API secrets): 0 raw identifiers exposed.');
     }
 
-    // Validate scenario and guard against prompt injection
     const validation = validateFinancialScenario(privacyResult.maskedText);
     if (!validation.isValid) {
       addLog('Coordinator Agent', 'Security & Validation Gate', validation.reason, 'error');
@@ -61,7 +59,6 @@ export class AgentOrchestrator {
       `Validated financial specification${uploadedDocName ? ` (+ attached document: ${uploadedDocName})` : ''} for stakeholder role: ${stakeholderRole.toUpperCase()}.`
     );
 
-    // Extract requirements and run quality checks
     const requirementResult = await this.requirementAgent.analyzeScenario(privacyResult.maskedText, {
       stakeholderRole,
       clarificationAnswers,
@@ -91,7 +88,6 @@ export class AgentOrchestrator {
       requirementResult.qualityReport.conflicts.length > 0 ? 'warn' : 'ok'
     );
 
-    // Prepare follow-up clarification prompts
     const clarifications = this.clarificationAgent.generateClarifications(privacyResult.maskedText, stakeholderRole);
     const answeredCount = Object.keys(clarificationAnswers).length;
     addLog(
@@ -100,7 +96,6 @@ export class AgentOrchestrator {
       `Prepared ${clarifications.length} financial clarification prompt(s) (${answeredCount} answered by stakeholder).`
     );
 
-    // Evaluate SDLC recommendations
     const sdlcResult = this.sdlcAgent.evaluateSDLC(requirementResult, customFactors, clarificationAnswers);
     addLog(
       'SDLC Selection Agent',

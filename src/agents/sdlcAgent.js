@@ -58,7 +58,6 @@ export class SdlcAgent {
     let contDeploy = 45;
     let formalVerif = 45;
 
-    // Stability vs Change Frequency
     if (/stable requirements|fixed scope|extensive approvals|frozen|statutory.*reporting|annual validated/.test(fullText)) {
       stability = 92;
       changeFreq = 18;
@@ -69,7 +68,6 @@ export class SdlcAgent {
       stability = 26;
     }
 
-    // Strict V&V / Mission-Critical Core Banking & RTGS Wire Settlement
     if (/strict verification|verification\/validation|v-model|formal verification|rtgs|wire settlement|high-value|zero transaction loss|mathematical invariant|double-entry/.test(fullText)) {
       formalVerif = 98;
       failConsequence = 99;
@@ -77,30 +75,25 @@ export class SdlcAgent {
       changeFreq = Math.min(changeFreq, 28);
     }
 
-    // Technical Uncertainty / AI Market Surveillance & Algo R&D
     if (/high uncertainty|technical risk|experimental|novel ai|research platform|algorithmic trading|hft|reinforcement learning|market abuse/.test(fullText)) {
       techUncertainty = 92;
       failConsequence = Math.max(failConsequence, 86);
     }
 
-    // Financial Regulatory Criticality
     if (/pci-dss|pci|rbi|basel|gdpr|sox|sebi|sec|finra|high regulation|regulated|accreditation|compliance|statutory/.test(fullText)) {
       regulatory = 96;
       formalVerif = Math.max(formalVerif, 82);
     }
 
-    // Security & Cardholder / PCI-DSS Risk
     if (/pci|pan|cardholder|hsm|tokenization|aes-256|2fa|mfa|sast|dast|encryption|secret/.test(fullText)) {
       secRisk = 94;
     }
 
-    // Continuous Deployment
     if (/continuous secure deployment|continuous deployment|ci\/cd|canary|microservices|cloud-native|payment switch/.test(fullText)) {
       contDeploy = 96;
       secRisk = Math.max(secRisk, 88);
     }
 
-    // Failure Consequence (Zero Data Loss, Financial Settlement, Capital Loss)
     if (/rtgs|zero data loss|rpo = 0|99\.999%|systemic risk|fraud|sub-50ms|settlement/.test(fullText)) {
       failConsequence = Math.max(failConsequence, 95);
     }
@@ -324,7 +317,6 @@ export class SdlcAgent {
     const isWaterfall = modelName === SDLC_MODEL_DEFINITIONS.WATERFALL;
     const isVModel = modelName === SDLC_MODEL_DEFINITIONS.V_MODEL;
     const isDevSecOps = modelName === SDLC_MODEL_DEFINITIONS.DEVSECOPS;
-    const isSpiral = modelName === SDLC_MODEL_DEFINITIONS.SPIRAL;
 
     return [
       {

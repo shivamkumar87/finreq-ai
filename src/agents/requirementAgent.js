@@ -211,7 +211,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
   _generateLocalRAGRequirements(maskedScenario, stakeholderObj, ragDocs, clarificationAnswers = {}) {
     const lower = (maskedScenario + ' ' + Object.values(clarificationAnswers).join(' ')).toLowerCase();
 
-    // Detect specific financial modules mentioned
     const hasCoreBanking = /core banking|gateway|payment switch|card|pan|upi|checkout|acquiring/.test(lower);
     const hasRTGS = /rtgs|settlement|wire|clearing|interbank|liquidity|central bank|high-value/.test(lower);
     const hasAlgoTrading = /trading|algo|algorithmic|hft|fraud|surveillance|market abuse|order book/.test(lower);
@@ -231,7 +230,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
     let frCounter = 1;
     const nextFrId = () => `FR-FIN-${String(frCounter++).padStart(2, '0')}`;
 
-    // 1. Core Cardholder / Financial Identity Protection
     functionalReqs.push({
       id: nextFrId(),
       title: 'Primary Account Number (PAN) Encryption & FIPS 140-2 Level 3 HSM Tokenization',
@@ -253,7 +251,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       confidence: 0.97
     });
 
-    // 2. Real-Time Transaction Routing / ISO 20022 Interbank Clearing
     functionalReqs.push({
       id: nextFrId(),
       title: 'ISO 20022 Financial Message Orchestration & Idempotent Payment Switch Routing',
@@ -340,7 +337,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       });
     }
 
-    // 4. SOX 404 Segregation of Duties & Immutable General Ledger Accounting
     functionalReqs.push({
       id: nextFrId(),
       title: 'Segregation of Duties (SoD) & Cryptographic General Ledger Audit Trail',
@@ -362,7 +358,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       confidence: 0.96
     });
 
-    // Core Non-Functional Requirements (4 NFRs)
     const nonFunctionalReqs = [
       {
         id: 'NFR-FIN-01',
@@ -457,10 +452,8 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       nonFunctionalRequirements = local.nonFunctionalReqs;
     }
 
-    // Run IEEE 830 Quality & Conflict Audit
     const qualityReport = auditRequirementQuality(scenarioText, functionalRequirements, nonFunctionalRequirements);
 
-    // Build IEEE 830 Requirements Traceability Matrix (RTM)
     const traceabilityMatrix = [
       ...functionalRequirements.map((fr) => ({
         requirementId: fr.id,
@@ -482,7 +475,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       }))
     ];
 
-    // Build FMEA Financial Risk Register
     const riskRegister = [
       {
         id: 'RISK-FIN-01',
@@ -514,7 +506,6 @@ Produce 4 to 5 Functional Requirements and 4 Non-Functional Requirements grounde
       }
     ];
 
-    // Compute Metrics
     const allConfidences = [
       ...functionalRequirements.map((r) => r.confidence || 0.92),
       ...nonFunctionalRequirements.map((r) => r.confidence || 0.94)

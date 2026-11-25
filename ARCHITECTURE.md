@@ -229,11 +229,12 @@ Generates a 5-phase delivery roadmap (Inception & Scoping -> Architecture & Thre
 
 | File | Role |
 |---|---|
-| `index.html` | HTML entry point and Google Fonts setup (`Plus Jakarta Sans`, `JetBrains Mono`, `Inter`) |
+| `index.html` | HTML entry point and Google Fonts setup (`IBM Plex Sans`, `IBM Plex Mono`) |
+| `public/favicon.svg` | Shield-and-currency SVG logo mark used as favicon and README icon |
 | `vite.config.js` | Vite React build and dev server config (`port: 3000`) |
 | `src/main.jsx` | React 19 root mount |
-| `src/App.jsx` | UI state, preset/file loading, pipeline invocation, live slider updates, HITL controls, SRS export |
-| `src/index.css` | CSS custom properties, layout grid, cards, tables, sliders, audit log styles |
+| `src/App.jsx` | Workbench UI: role/API controls, preset & file input, collapsible clarifications, tabbed requirements/audit/RTM view with status filters and batch approval, live MCDA sliders, expandable workflow timeline, sign-off, collapsible audit log, and SRS export |
+| `src/index.css` | Light-blue/white CSS custom properties, typography rules, panel layout, tables, sliders, and timeline styles |
 | `src/agents/orchestrator.js` | `AgentOrchestrator` class coordinating Stages 1-5 and logging |
 | `src/agents/privacyGuard.js` | `maskSensitiveFinancialData` and `validateFinancialScenario` |
 | `src/agents/knowledgeBase.js` | `STAKEHOLDER_ROLES`, `FINANCIAL_KNOWLEDGE_BASE`, `retrieveFinancialContext` |

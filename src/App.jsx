@@ -405,11 +405,15 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleCopySummary = () => {
+  const handleCopySummary = async () => {
     if (!pipelineResult?.requirementResult || !pipelineResult?.sdlcResult) return;
-    navigator.clipboard.writeText(buildCurrentMarkdown());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(buildCurrentMarkdown());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable in insecure context
+    }
   };
 
   const reqData = pipelineResult?.requirementResult;
@@ -927,7 +931,7 @@ export default function App() {
                           <tr key={row.requirementId}>
                             <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-text)' }}>{row.requirementId}</td>
                             <td>{row.title}</td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>{row.citations}</td>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{row.citations}</td>
                             <td>{row.verificationStage}</td>
                           </tr>
                         ))}
@@ -1086,12 +1090,23 @@ export default function App() {
                     <div
                       key={phase.phaseNumber}
                       className="phase-node"
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         if (e.target.closest('.phase-body')) return;
                         setExpandedPhaseNumbers((prev) => ({
                           ...prev,
                           [phase.phaseNumber]: !prev[phase.phaseNumber]
                         }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedPhaseNumbers((prev) => ({
+                            ...prev,
+                            [phase.phaseNumber]: !prev[phase.phaseNumber]
+                          }));
+                        }
                       }}
                     >
                       <div className="phase-top">

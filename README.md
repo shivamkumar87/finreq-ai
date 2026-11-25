@@ -4,14 +4,14 @@ Requirements engineering, regulatory compliance mapping, and SDLC selection plat
 
 ## What It Does
 
-Software teams in banking and fintech have to reconcile fast product delivery with statutory controls such as PCI-DSS v4.0, RBI Cyber Security Framework, Basel III / BCBS 239, SOX 404, GDPR, and ISO 20022. FinReq AI processes a plain-text system description or policy document through a sequence of browser-side modules and produces:
+Financial software specifications combine product features with regulatory obligations (PCI-DSS v4.0, RBI Cyber Security Framework, Basel III / BCBS 239, SOX 404, GDPR, ISO 20022). FinReq AI takes a plain-text scenario or uploaded policy document and produces:
 
-- **Sanitized input** with credit card numbers, bank accounts, government IDs, emails, phone numbers, and API credentials masked prior to inference.
+- **Sanitized input** with credit card numbers, bank accounts, government IDs, emails, phone numbers, and API credentials masked before analysis.
 - **IEEE 830 requirements** (functional and non-functional) mapped to versioned regulatory clauses with confidence scores, acceptance criteria, and a Requirements Traceability Matrix (RTM).
-- **Quality and conflict audit** flagging vague terms (such as unquantified "fast" or "scalable") and common domain tensions (such as 1-click checkout vs. mandatory 2FA/SCA).
-- **Clarification prompts** covering peak TPS, regulatory jurisdiction, disaster recovery (RTO/RPO), payment rails, and release cadence.
-- **SDLC ranking and 5-phase workflow** evaluating 6 lifecycle models across 8 project factors and 6 deterministic rules, with interactive factor sliders for sensitivity analysis.
-- **Human-in-the-loop review and Markdown SRS export** with per-requirement Approve/Flag tracking, SDLC sign-off, and an execution audit trail.
+- **Quality and conflict audit** flagging unquantified terms (such as "fast" or "scalable") and common domain tensions (such as 1-click checkout vs. 2FA/SCA).
+- **Clarification questions** covering peak TPS, regulatory jurisdiction, disaster recovery (RTO/RPO), payment rails, and release cadence.
+- **SDLC ranking and 5-phase workflow** evaluating 6 lifecycle models across 8 project factors and 6 rule checks, with live factor sliders for sensitivity analysis.
+- **Review controls and Markdown SRS export** with per-requirement Approve/Flag filtering, batch approval, SDLC sign-off, and an execution audit log.
 
 ---
 
@@ -47,7 +47,7 @@ flowchart TD
 | Privacy Guardrail | [`src/agents/privacyGuard.js`](src/agents/privacyGuard.js) | Masks 6 PII/PCI token types via regex and rejects inputs under 15 chars, under 4 words, prompt injections, profanity, or non-financial text. |
 | Regulatory Knowledge Base | [`src/agents/knowledgeBase.js`](src/agents/knowledgeBase.js) | Holds 6 stakeholder profiles and 8 versioned regulatory entries; scores and retrieves top matching citations. |
 | Requirement Engineer | [`src/agents/requirementAgent.js`](src/agents/requirementAgent.js) | Generates domain-specific FRs/NFRs locally or via `gemini-2.5-flash` (with automatic local fallback), audits vague terms and conflicts, and builds the Risk Register and RTM. |
-| Clarification Agent | [`src/agents/clarificationAgent.js`](src/agents/clarificationAgent.js) | Surfaces targeted questions for missing operational constraints (peak TPS, regulatory regime, RTO/RPO, payment rails, release cadence). |
+| Clarification Agent | [`src/agents/clarificationAgent.js`](src/agents/clarificationAgent.js) | Generates targeted questions for missing operational constraints (peak TPS, regulatory regime, RTO/RPO, payment rails, release cadence). |
 | SDLC Architect | [`src/agents/sdlcAgent.js`](src/agents/sdlcAgent.js) | Extracts 8 quantitative factors (`0-100`), evaluates 6 SDLC models via weighted MCDA + 6 deterministic rules, and builds a 5-phase workflow. |
 | Presets | [`src/agents/presets.js`](src/agents/presets.js) | 5 financial case studies and 6 rule verification scenarios. |
 | SRS Exporter | [`src/utils/srsExporter.js`](src/utils/srsExporter.js) | Generates an 8-section IEEE 830 Markdown document containing requirements, approvals, RTM, risk register, SDLC ranking, workflow, and audit log. |
@@ -143,7 +143,7 @@ Runs `node test_agents.mjs`, verifying PCI/PII masking, prompt-injection blockin
 
 ### Optional Live Gemini Mode
 
-By default, FinReq AI runs offline using the built-in rule and knowledge-base engine. To use live `gemini-2.5-flash` extraction grounded in the retrieved regulatory context, click **Optional Gemini API Key** in the UI and enter a Gemini API key (stored only in React component state for the active session). If the API call fails, the agent falls back to the local engine and logs a warning in the audit trail.
+By default, FinReq AI runs offline using the built-in rule and knowledge-base engine. To use live `gemini-2.5-flash` extraction with the retrieved regulatory clauses, click **API Key** in the top bar and enter a Gemini API key (stored only in React component state for the active session). If the API call fails, the agent falls back to the local engine and logs a warning in the audit log.
 
 ---
 
