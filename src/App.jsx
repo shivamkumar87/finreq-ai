@@ -8,6 +8,8 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Upload,
   Key,
   RefreshCw,
@@ -37,10 +39,12 @@ const FACTOR_LABELS = [
 ];
 
 const THEME_OPTIONS = [
-  { id: 'light-cobalt', label: 'Light & Cobalt' },
-  { id: 'warm-pine', label: 'Warm Paper & Pine' },
-  { id: 'dark-graphite', label: 'Dark Graphite & Blue' },
-  { id: 'dark-copper', label: 'Dark Charcoal & Copper' }
+  { id: 'mercury-light', label: '1. Crisp Alabaster & Indigo (Light)' },
+  { id: 'warm-sand', label: '2. Warm Sand & Clay (Light)' },
+  { id: 'editorial-plum', label: '3. Paper & Bordeaux (Light)' },
+  { id: 'nord-dark', label: '4. Nordic Slate & Frost (Dark)' },
+  { id: 'noir-minimal', label: '5. Monochrome Noir (Dark)' },
+  { id: 'rose-dark', label: '6. Midnight Indigo & Periwinkle (Dark)' }
 ];
 
 function RequirementRow({ item, kind, status, isExpanded, onToggleExpand, onDecision }) {
@@ -166,11 +170,17 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     try {
       const saved = window.localStorage.getItem('finreq_theme');
-      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'light-cobalt';
+      return THEME_OPTIONS.some((t) => t.id === saved) ? saved : 'mercury-light';
     } catch {
-      return 'light-cobalt';
+      return 'mercury-light';
     }
   });
+
+  const stepTheme = (delta) => {
+    const idx = THEME_OPTIONS.findIndex((t) => t.id === theme);
+    const nextIdx = (idx + delta + THEME_OPTIONS.length) % THEME_OPTIONS.length;
+    setTheme(THEME_OPTIONS[nextIdx].id);
+  };
 
   const [pipelineResult, setPipelineResult] = useState(null);
   const [baselineFactors, setBaselineFactors] = useState(null);
@@ -491,18 +501,38 @@ export default function App() {
 
         <div className="toolbar-group">
           <label className="field-label" htmlFor="theme-select">Theme</label>
-          <select
-            id="theme-select"
-            className="select-ctrl"
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-          >
-            {THEME_OPTIONS.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          <div className="theme-picker">
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => stepTheme(-1)}
+              title="Previous theme"
+              aria-label="Previous theme"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <select
+              id="theme-select"
+              className="select-ctrl"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+            >
+              {THEME_OPTIONS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => stepTheme(1)}
+              title="Next theme"
+              aria-label="Next theme"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
 
           <label className="field-label" htmlFor="role-select">Role</label>
           <select
