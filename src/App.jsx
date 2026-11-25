@@ -792,7 +792,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="group-label" style={{ marginTop: '1.15rem' }}>
+                  <div className="group-label" style={{ marginTop: '1.65rem' }}>
                     <span>Non-Functional ({filteredNFRs.length})</span>
                   </div>
                   {filteredNFRs.length === 0 ? (
@@ -824,11 +824,11 @@ export default function App() {
                     <span>{reqData.qualityReport.testabilityRating}</span>
                   </div>
                   {reqData.qualityReport.ambiguities.length === 0 ? (
-                    <p className="meta-note" style={{ marginBottom: '1rem' }}>
+                    <p className="meta-note" style={{ marginBottom: '1.5rem' }}>
                       No unquantified vague terms detected.
                     </p>
                   ) : (
-                    <div className="spec-list" style={{ marginBottom: '1rem' }}>
+                    <div className="spec-list" style={{ marginBottom: '1.5rem' }}>
                       {reqData.qualityReport.ambiguities.map((a, idx) => (
                         <div key={idx} className="spec-row flagged">
                           <div className="spec-title">Ambiguous term: &ldquo;{a.term}&rdquo;</div>
@@ -843,11 +843,11 @@ export default function App() {
                     <span>Conflicts ({reqData.qualityReport.conflicts.length})</span>
                   </div>
                   {reqData.qualityReport.conflicts.length === 0 ? (
-                    <p className="meta-note" style={{ marginBottom: '1rem' }}>
+                    <p className="meta-note" style={{ marginBottom: '1.5rem' }}>
                       No stakeholder conflicts detected.
                     </p>
                   ) : (
-                    <div className="spec-list" style={{ marginBottom: '1rem' }}>
+                    <div className="spec-list" style={{ marginBottom: '1.5rem' }}>
                       {reqData.qualityReport.conflicts.map((c) => (
                         <div key={c.id} className="spec-row flagged">
                           <div className="spec-row-head">
@@ -891,7 +891,7 @@ export default function App() {
                   <div className="group-label">
                     <span>Retrieved Clauses ({reqData.retrievedKnowledge.length})</span>
                   </div>
-                  <div className="spec-list" style={{ marginBottom: '1.1rem' }}>
+                  <div className="spec-list" style={{ marginBottom: '1.6rem' }}>
                     {reqData.retrievedKnowledge.map((kb) => (
                       <div key={kb.id} className="spec-row">
                         <div className="spec-row-head">
